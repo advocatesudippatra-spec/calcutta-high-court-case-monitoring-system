@@ -1,5 +1,7 @@
 # Calcutta High Court Case Monitoring System
 
+![Calcutta High Court Case Monitoring System](docs/social-preview.png)
+
 For advocates of the Calcutta High Court. You enter your name once. Every night the system finds your
 matters in the cause lists and tells you on Telegram which court, item and heading each matter is in, and
 how likely it is to be reached. During court hours it watches the live display board and rings your phone
