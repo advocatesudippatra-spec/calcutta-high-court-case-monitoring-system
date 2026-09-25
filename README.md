@@ -16,7 +16,7 @@ matters or any case, and forward it a bar notice when the courts rise early.
 **Contents:** [Your day](#your-day-with-it) · [How it works](#how-it-works) · [Set up](#set-up-about-15-minutes-once)
 · [Phone](#phone-setup) · [Daily routine](#daily-routine) · [How "likely" works](#how-likely-is-worked-out)
 · [Ask the bot](#ask-the-bot) · [Early rising](#courts-rising-early) · [All commands](#all-commands)
-· [Feature checklist](#feature-checklist) · [Questions](#questions) · [About](#about-the-author)
+· [Feature checklist](#feature-checklist) · [Questions](#questions) · [About the firm](#about-patras-law-chambers)
 
 ---
 
@@ -300,18 +300,51 @@ and the Port Blair Circuit Bench.
 | `court_mode.sh`, `* Court Mode.command` | Keep a MacBook awake during court |
 | `docs/` | The manual (`index.html`, `manual.html`), diagrams and preview image |
 
-## About the author
+## About Patra's Law Chambers
 
-**Sudip Patra** is an Advocate, enrolled in 2017, practising before the Supreme Court of India and the Calcutta
-High Court. An engineer by training, he studied law at the Rajiv Gandhi School of Intellectual Property Law,
-IIT Kharagpur, and business law at IIM Calcutta. He is the Founder and Principal Advocate of Patra's Law Chambers.
-This system grew out of his daily practice at the Calcutta High Court.
+<img src="docs/firm-seal-gold.png" alt="Patra's Law Chambers" width="130" align="right">
 
-**Patra's Law Chambers**, established in 2020, has offices in Kolkata and New Delhi. It appears before the
-Supreme Court of India, the Calcutta High Court, the Armed Forces Tribunal, the Central Administrative Tribunal,
-the Debts Recovery Tribunal and DRAT, CESTAT, the NCLT, and the district, sessions, family and consumer courts of
-West Bengal, in civil, criminal, service, banking, tax, property, family, intellectual property, company and
-cyber-law matters. Website: https://patraslawchambers.com/
+This system was built and released by **Patra's Law Chambers**, a litigation practice with chambers in Kolkata and
+New Delhi, out of its founder's daily practice at the Calcutta High Court.
+
+### The founder
+
+**Advocate Sudip Patra**, Founder & Managing Partner, is an alumnus of IIT Kharagpur. He holds a B.Tech in
+Electrical Engineering, an LL.B. (Hons.) in Intellectual Property Law, a PG Diploma in Power Transmission &
+Distribution, and a PG Executive Diploma in Business & Corporate Law from IIM Calcutta (Joka). A practising
+advocate with over 10 years of experience, he specialises in intellectual property, corporate law, arbitration,
+civil and criminal litigation, and High Court and Supreme Court matters. In 2020 he left an established position
+to begin his independent practice, which became Patra's Law Chambers.
+
+### The firm
+
+Founded in 2020 as a solo practice in Kolkata, the firm opened its second chamber in New Delhi in 2023 and has
+grown into a team of more than 10 legal professionals handling matters across both jurisdictions. It practises
+before the Supreme Court of India, the Calcutta High Court, and tribunals including the Central Administrative
+Tribunal, the Armed Forces Tribunal, the Debts Recovery Tribunal and DRAT, and the NCLT, as well as civil and
+criminal courts. Its practice areas:
+
+- **Corporate & Commercial Law:** business transactions, contract disputes, arbitration and commercial litigation
+- **Intellectual Property:** patents, trademarks, copyrights, designs and geographical indications
+- **Cyber Law & Arbitration:** digital fraud, data protection and arbitration
+- **Government Service Disputes:** matters before the Central and State Administrative Tribunals
+- **Civil & Criminal Litigation:** High Court matters, writ petitions and lower court proceedings, including bail and quashing
+- **NCLT & Insolvency:** insolvency, bankruptcy, company mismanagement and merger disputes
+- **Land & Banking Disputes:** land appeals, mutation, electricity disputes and banking litigation
+- **High Court & Supreme Court:** civil and criminal revisions, writ applications and appeals, Special Leave
+  Petitions, transfer applications and writ matters before the Supreme Court
+
+The firm describes its mission as providing legal services with integrity, dedication and expertise, and growing
+into a pan-India law firm with a presence in multiple cities.
+
+### Offices and contact
+
+| | |
+|---|---|
+| **Kolkata** | NICCO House, 6th Floor, 2 Hare Street, Kolkata 700001 (a short walk from the Calcutta High Court) |
+| **New Delhi** | 4455/5, 1st Floor, Gali Shahid Bhagat Singh, Paharganj, New Delhi 110055 |
+| **Website** | https://patraslawchambers.com/ · [About us](https://patraslawchambers.com/about-us/) · [Contact](https://patraslawchambers.com/contact-us/) |
+| **Phone / WhatsApp** | +91 890 222 4444 |
 
 ## Licence and disclaimer
 
