@@ -1,6 +1,8 @@
 # Calcutta High Court Case Monitoring System
 
-![Calcutta High Court Case Monitoring System](docs/social-preview.png)
+<div align="justify">
+
+![Calcutta High Court Case Monitoring System](docs/preview-seal.png)
 
 You enter your name once. Every night the system finds your matters in the Calcutta High Court cause lists and
 tells you on Telegram which court, which item, under which heading, and how likely each matter is to be reached.
@@ -319,3 +321,6 @@ freely; it comes with no warranty.
 The system only reads the Calcutta High Court's public cause lists; the display board's CAPTCHA is always typed by
 the user. Chances are estimates from the cause list and the Bench's notes and are not legal advice or a prediction
 by the Court; always check the determination and the court's own records. Not affiliated with the Calcutta High Court.
+
+
+</div>
