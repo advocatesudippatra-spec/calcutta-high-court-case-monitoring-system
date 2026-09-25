@@ -118,7 +118,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 </style>
 
 <div class="wrap">
-<div class="sample"><b>Sample manual</b> A preview of the manual for the general version, so the planned process can be reviewed before it is built. Names, the bot and links shown here are examples.</div>
+<div class="sample"><b>Private review copy</b> This repository is private while it is being checked. Names, the bot and replies shown in this manual are examples.</div>
 
 <header class="top">
   <span class="eyebrow">Calcutta High Court · for advocates</span>
@@ -196,14 +196,14 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <text x="365" y="287" class="i-t">Answer the questions</text>
 <text x="339" y="308" class="i-s">Name, token, phone, alarm app, sides</text>
 <rect x="337" y="316" width="226" height="19" rx="4" class="i-cbg"/>
-<text x="344" y="329.5" class="i-c">~/.calllist/calllist setup</text>
+<text x="344" y="329.5" class="i-c">~/.casemonitor/casemonitor setup</text>
 </g><g>
 <rect x="625" y="370" width="250" height="82" rx="10" class="i-chrome"/>
 <circle cx="645" cy="392" r="12" class="i-num"/><text x="645" y="396.5" class="i-numt">4</text>
 <text x="665" y="397" class="i-t">Add the Board Watcher</text>
 <text x="639" y="418" class="i-s">Tampermonkey, then open link → Install</text>
 <rect x="637" y="426" width="226" height="19" rx="4" class="i-cbg"/>
-<text x="644" y="439.5" class="i-c">127.0.0.1:8765/watcher.user.js</text>
+<text x="644" y="439.5" class="i-c">127.0.0.1:8766/watcher.user.js</text>
 </g><g>
 <rect x="25" y="480" width="250" height="82" rx="10" class="i-phone"/>
 <circle cx="45" cy="502" r="12" class="i-num"/><text x="45" y="506.5" class="i-numt">5</text>
@@ -238,9 +238,11 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <ol class="steps">
 <li><strong>Make your own Telegram bot</strong>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code>, choose any display name, and choose a username that ends in <code>bot</code>. BotFather replies with a token that looks like <code>123456789:AA…</code>. Keep it for step 3. Your bot talks only to you.</li>
 <li><strong>Install the program</strong>Open Terminal (Applications › Utilities › Terminal), paste this line and press Return. It downloads the program into your home folder and sets up the background schedule.
-<div class="cmd"><pre>curl -fsSL https://raw.githubusercontent.com/&lt;owner&gt;/calcutta-high-court-case-monitoring-system/main/get.sh | bash</pre><button class="copy" type="button">Copy</button></div>
-<p>For the private review copy, the installer first asks you to sign in to GitHub once in the browser.</p></li>
-<li><strong>Answer the setup questions</strong>The installer then asks a few questions and does everything else. You can run them again later with <code>calllist setup</code>.
+<div class="cmd"><pre>curl -fsSL https://raw.githubusercontent.com/advocatesudippatra-spec/calcutta-high-court-case-monitoring-system/main/get.sh | bash</pre><button class="copy" type="button">Copy</button></div>
+<p>While the repository is private, use these two lines instead (the first signs you in to GitHub once):</p>
+<div class="cmd"><pre>brew install gh &amp;&amp; gh auth login</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>gh repo clone advocatesudippatra-spec/calcutta-high-court-case-monitoring-system ~/CaseMonitoringSystem &amp;&amp; ~/CaseMonitoringSystem/install.sh</pre><button class="copy" type="button">Copy</button></div></li>
+<li><strong>Answer the setup questions</strong>The installer then asks a few questions and does everything else. You can run them again later with <code>~/.casemonitor/casemonitor setup</code>.
 <div class="term"><span class="q">Your name as printed in the cause list</span> (other spellings separated by commas): <span class="a">ARUN KUMAR SEN, A K SEN</span>
 <span class="q">Paste your Telegram bot token:</span> <span class="a">123456789:AA…</span>
 <span class="ok">Token OK. Open your bot in Telegram and send: hello</span>
@@ -252,9 +254,9 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <span class="q">Open the display board by itself at 10:15 on court days?</span> [Y/n] <span class="a">Y</span>
 <span class="ok">Done. A test message is on your phone.</span></div></li>
 <li><strong>Add the Board Watcher to Chrome</strong>Install <b>Tampermonkey</b> (by Jan Biniok) from the Chrome Web Store. Type <code>chrome://extensions</code> in Chrome's address bar, open Tampermonkey's Details and turn on <i>Allow User Scripts</i>. Then open the link below in Chrome on the same Mac and click <b>Install</b>. The watcher updates itself from then on, and it takes its alert settings from the program, so there is nothing to paste.
-<div class="cmd"><pre>http://127.0.0.1:8765/watcher.user.js</pre><button class="copy" type="button">Copy</button></div></li>
+<div class="cmd"><pre>http://127.0.0.1:8766/watcher.user.js</pre><button class="copy" type="button">Copy</button></div></li>
 <li><strong>Check that it works</strong>Send <code>/status</code> to your bot; a reply comes within seconds. On the Mac you can also run:
-<div class="cmd"><pre>~/.calllist/calllist status</pre><button class="copy" type="button">Copy</button></div></li>
+<div class="cmd"><pre>~/.casemonitor/casemonitor status</pre><button class="copy" type="button">Copy</button></div></li>
 </ol>
 
 <h2 id="phone"><span class="n">04</span>Phone setup</h2>
@@ -332,29 +334,31 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <tr><td>plain words</td><td><code>group 6</code>, <code>anticipatory bail</code>, <code>justice …</code>, <code>court 35</code>, <code>mentioning 25</code>, <code>fixed 35</code>, <code>find 6841</code>, <code>advocate …</code>, <code>party …</code>, <code>running 12</code>, <code>board</code>, <code>my courts</code>, <code>courts</code>, <code>group 6 history</code>, <code>justice … history</code>, <code>changes</code>.</td></tr>
 </table></div>
 <h3>Run these in Terminal on the Mac</h3>
-<p>Every command starts with <code>~/.calllist/calllist</code>. Copy the ones you need.</p>
-<div class="cmd"><pre>~/.calllist/calllist setup</pre><button class="copy" type="button">Copy</button></div>
+<p>Every command starts with <code>~/.casemonitor/casemonitor</code>. Copy the ones you need.</p>
+<div class="cmd"><pre>~/CaseMonitoringSystem/try.sh "ARUN KUMAR SEN" 25092026</pre><button class="copy" type="button">Copy</button></div>
+<p>Try the system for any name and date without installing or sending anything (it uses a separate test folder).</p>
+<div class="cmd"><pre>~/.casemonitor/casemonitor setup</pre><button class="copy" type="button">Copy</button></div>
 <p>Change your name, bot, phone type, alarm app or nightly sides.</p>
-<div class="cmd"><pre>~/.calllist/calllist status</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor status</pre><button class="copy" type="button">Copy</button></div>
 <p>Show whether it is active, the ntfy topic and the recent jobs.</p>
-<div class="cmd"><pre>~/.calllist/calllist report --date 29092026 --dry-run</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor report --date 29092026 --dry-run</pre><button class="copy" type="button">Copy</button></div>
 <p>See the report for a date on screen without sending it (leave out <code>--dry-run</code> to send it; add <code>--sides A,O,J</code> for other sides).</p>
-<div class="cmd"><pre>~/.calllist/calllist ask "group 6 tomorrow"</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor ask "group 6 tomorrow"</pre><button class="copy" type="button">Copy</button></div>
 <p>Ask the roster a question and read the answer in Terminal.</p>
-<div class="cmd"><pre>~/.calllist/calllist board</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor board</pre><button class="copy" type="button">Copy</button></div>
 <p>Open the display board in Chrome.</p>
-<div class="cmd"><pre>~/.calllist/calllist monthly --dry-run</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor monthly --dry-run</pre><button class="copy" type="button">Copy</button></div>
 <p>Your matters in the latest monthly list.</p>
-<div class="cmd"><pre>~/.calllist/calllist backfill --from 01072026</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor backfill --from 01072026</pre><button class="copy" type="button">Copy</button></div>
 <p>Load past cause lists into the roster history (useful right after installing).</p>
-<div class="cmd"><pre>~/.calllist/calllist forget-database</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor forget-database</pre><button class="copy" type="button">Copy</button></div>
 <p>Delete the stored roster history (asks you to type DELETE; add <code>--before 01012026</code> to delete only older lists).</p>
-<div class="cmd"><pre>~/.calllist/calllist simulate --at "2026-09-26 14:00"</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>~/.casemonitor/casemonitor simulate --at "2026-09-26 14:00"</pre><button class="copy" type="button">Copy</button></div>
 <p>Test what the schedule would do at a given time, without sending anything.</p>
-<div class="cmd"><pre>tail -40 ~/.calllist/logs/tick.log</pre><button class="copy" type="button">Copy</button></div>
+<div class="cmd"><pre>tail -40 ~/.casemonitor/logs/tick.log</pre><button class="copy" type="button">Copy</button></div>
 <p>See what the background check did recently.</p>
-<div class="cmd"><pre>~/calllist/uninstall.sh</pre><button class="copy" type="button">Copy</button></div>
-<p>Remove the background schedule from this Mac (your settings and history stay unless you delete <code>~/.calllist</code>).</p>
+<div class="cmd"><pre>~/CaseMonitoringSystem/uninstall.sh</pre><button class="copy" type="button">Copy</button></div>
+<p>Remove the background schedule from this Mac (your settings and history stay unless you delete <code>~/.casemonitor</code>).</p>
 
 <h2 id="features"><span class="n">10</span>Feature checklist</h2>
 <p>Everything the current system does is carried into the general version.</p>
@@ -432,7 +436,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <p>The Calcutta High Court: Appellate Side, Original Side, the Jalpaiguri Circuit Bench and the Port Blair Circuit Bench.</p>
 <div class="note"><p>Chances are estimates from the cause list, the Bench's notes and the items ahead. Always check the determination yourself.</p></div>
 
-<footer>Calcutta High Court Case Monitoring System · sample manual · private repository for review</footer>
+<footer>Calcutta High Court Case Monitoring System · private repository for review</footer>
 </div>
 
 <script>
