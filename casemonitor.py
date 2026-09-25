@@ -351,15 +351,20 @@ def monthly_rows(cfg, side, date_str, fetch=True):
     Only your rows are kept (a small file); the big PDF is deleted after reading."""
     os.makedirs(MONTHLY, exist_ok=True)
     path = os.path.join(MONTHLY, "%s_%s.json" % (side, date_str))
+    names = sorted(n.upper() for n in cfg["names"])
     if os.path.exists(path):
-        return json.load(open(path))["rows"]
+        saved = json.load(open(path))
+        if saved.get("names") == names:  # saved for the same name(s); a changed name reads the list again
+            return saved["rows"]
+        if not fetch:
+            return None
     if not fetch:
         return None
     pdf = cl.download(date_str, side, CACHE, kind="monthly")
     if not pdf:
         return None
     rows = [_slim(r) for r in cl.analyse(pdf, cfg["names"], side, date_str, kind="monthly")]
-    json.dump({"side": side, "date": date_str, "rows": rows}, open(path, "w"))
+    json.dump({"side": side, "date": date_str, "names": names, "rows": rows}, open(path, "w"))
     try:
         os.remove(pdf)
     except OSError:
