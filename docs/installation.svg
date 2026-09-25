@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" width="900" height="700"><style>
+.d-col{font:600 12px Menlo,Consolas,monospace;letter-spacing:.12em;fill:#9BA4B2;text-anchor:middle}
+.d-court{fill:#2B1B1F;stroke:#E08792;stroke-width:1.4}.d-mac{fill:#1A2331;stroke:#8EAFDF;stroke-width:1.4}
+.d-phone{fill:#172519;stroke:#86C79A;stroke-width:1.4}.d-shared{fill:#282114;stroke:#DBAF5E;stroke-width:1.4}
+.d-t{font:600 15px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#E6E9EF;text-anchor:middle}
+.d-s{font:12.5px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2;text-anchor:middle}
+.d-a{font:11px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2;text-anchor:middle}
+.d-line{stroke:#9BA4B2;stroke-width:1.5;fill:none}.d-dash{stroke-dasharray:5 4}.d-head{fill:#9BA4B2}
+.lane-phone{fill:#172519;opacity:.55}.lane-mac{fill:#1A2331;opacity:.7}.lane-chrome{fill:#282114;opacity:.7}
+.i-phone{fill:#151B23;stroke:#86C79A;stroke-width:1.5}.i-mac{fill:#151B23;stroke:#8EAFDF;stroke-width:1.5}
+.i-chrome{fill:#151B23;stroke:#DBAF5E;stroke-width:1.5}.i-num{fill:#E08792}
+.i-numt{font:600 13px Menlo,Consolas,monospace;fill:#0E1218;text-anchor:middle}
+.i-t{font:600 15px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#E6E9EF}
+.i-s{font:11.5px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2}
+.i-cbg{fill:#1B222C;stroke:#27303B}.i-c{font:500 11.5px Menlo,Consolas,monospace;fill:#E6E9EF}
+</style><rect width="900" height="700" rx="12" fill="#0E1218"/>
+<title>Installation steps</title>
+<defs><marker id="ia" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker></defs>
+<rect x="10" y="8" width="280" height="682" rx="12" class="lane-phone"/>
+<rect x="310" y="8" width="280" height="682" rx="12" class="lane-mac"/>
+<rect x="610" y="8" width="280" height="682" rx="12" class="lane-chrome"/>
+<text x="150" y="28" class="d-col">ON YOUR PHONE</text>
+<text x="450" y="28" class="d-col">ON THE MAC · TERMINAL</text>
+<text x="750" y="28" class="d-col">ON THE MAC · CHROME</text>
+<g>
+<rect x="25" y="40" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="62" r="12" class="i-num"/><text x="45" y="66.5" class="i-numt">1</text>
+<text x="65" y="67" class="i-t">Make your bot</text>
+<text x="39" y="88" class="i-s">Open @BotFather, keep the token</text>
+<rect x="37" y="96" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="109.5" class="i-c">/newbot</text>
+</g><g>
+<rect x="325" y="150" width="250" height="82" rx="10" class="i-mac"/>
+<circle cx="345" cy="172" r="12" class="i-num"/><text x="345" y="176.5" class="i-numt">2</text>
+<text x="365" y="177" class="i-t">Install the program</text>
+<text x="339" y="198" class="i-s">Open Terminal, paste one line</text>
+<rect x="337" y="206" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="344" y="219.5" class="i-c">curl -fsSL …/get.sh | bash</text>
+</g><g>
+<rect x="325" y="260" width="250" height="82" rx="10" class="i-mac"/>
+<circle cx="345" cy="282" r="12" class="i-num"/><text x="345" y="286.5" class="i-numt">3</text>
+<text x="365" y="287" class="i-t">Answer the questions</text>
+<text x="339" y="308" class="i-s">Name, token, phone, alarm app, sides</text>
+<rect x="337" y="316" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="344" y="329.5" class="i-c">casemonitor setup</text>
+</g><g>
+<rect x="625" y="370" width="250" height="82" rx="10" class="i-chrome"/>
+<circle cx="645" cy="392" r="12" class="i-num"/><text x="645" y="396.5" class="i-numt">4</text>
+<text x="665" y="397" class="i-t">Add the Board Watcher</text>
+<text x="639" y="418" class="i-s">Tampermonkey, then open link → Install</text>
+<rect x="637" y="426" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="644" y="439.5" class="i-c">127.0.0.1:8766/watcher.user.js</text>
+</g><g>
+<rect x="25" y="480" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="502" r="12" class="i-num"/><text x="45" y="506.5" class="i-numt">5</text>
+<text x="65" y="507" class="i-t">Set up alarms</text>
+<text x="39" y="528" class="i-s">ntfy (Android) or Pushover (iPhone)</text>
+<rect x="37" y="536" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="549.5" class="i-c">/ntfy  ·  topic for the app</text>
+</g><g>
+<rect x="25" y="590" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="612" r="12" class="i-num"/><text x="45" y="616.5" class="i-numt">6</text>
+<text x="65" y="617" class="i-t">Check it works</text>
+<text x="39" y="638" class="i-s">Send to your bot; reply in seconds</text>
+<rect x="37" y="646" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="659.5" class="i-c">/status</text>
+</g>
+<g class="d-line" marker-end="url(#ia)">
+  <path d="M275,81 C310,81 330,100 450,100 L450,146"/>
+  <line x1="450" y1="232" x2="450" y2="256"/>
+  <path d="M575,301 C620,301 640,320 750,320 L750,366"/>
+  <path d="M625,411 C520,411 460,440 150,440 L150,476"/>
+  <line x1="150" y1="562" x2="150" y2="586"/>
+</g>
+<text x="372" y="84" class="d-a">token</text>
+<text x="486" y="248" class="d-a">then</text>
+<text x="700" y="304" class="d-a">program running</text>
+<text x="400" y="458" class="d-a">watcher installed</text>
+<text x="186" y="578" class="d-a">alarms on</text>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430"><style>
+.d-col{font:600 12px Menlo,Consolas,monospace;letter-spacing:.12em;fill:#9BA4B2;text-anchor:middle}
+.d-court{fill:#2B1B1F;stroke:#E08792;stroke-width:1.4}.d-mac{fill:#1A2331;stroke:#8EAFDF;stroke-width:1.4}
+.d-phone{fill:#172519;stroke:#86C79A;stroke-width:1.4}.d-shared{fill:#282114;stroke:#DBAF5E;stroke-width:1.4}
+.d-t{font:600 15px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#E6E9EF;text-anchor:middle}
+.d-s{font:12.5px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2;text-anchor:middle}
+.d-a{font:11px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2;text-anchor:middle}
+.d-line{stroke:#9BA4B2;stroke-width:1.5;fill:none}.d-dash{stroke-dasharray:5 4}.d-head{fill:#9BA4B2}
+.lane-phone{fill:#172519;opacity:.55}.lane-mac{fill:#1A2331;opacity:.7}.lane-chrome{fill:#282114;opacity:.7}
+.i-phone{fill:#151B23;stroke:#86C79A;stroke-width:1.5}.i-mac{fill:#151B23;stroke:#8EAFDF;stroke-width:1.5}
+.i-chrome{fill:#151B23;stroke:#DBAF5E;stroke-width:1.5}.i-num{fill:#E08792}
+.i-numt{font:600 13px Menlo,Consolas,monospace;fill:#0E1218;text-anchor:middle}
+.i-t{font:600 15px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#E6E9EF}
+.i-s{font:11.5px -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#9BA4B2}
+.i-cbg{fill:#1B222C;stroke:#27303B}.i-c{font:500 11.5px Menlo,Consolas,monospace;fill:#E6E9EF}
+</style><rect width="900" height="430" rx="12" fill="#0E1218"/>
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker></defs>
+<text x="115" y="26" class="d-col">HIGH COURT</text><text x="450" y="26" class="d-col">YOUR MAC</text><text x="785" y="26" class="d-col">YOUR PHONE</text>
+<rect x="20" y="45" width="190" height="110" rx="10" class="d-court"/><text x="115" y="80" class="d-t">Cause lists</text><text x="115" y="102" class="d-s">daily, supplementary,</text><text x="115" y="119" class="d-s">monthly · public PDFs</text><text x="115" y="140" class="d-s">read every night</text>
+<rect x="20" y="205" width="190" height="110" rx="10" class="d-court"/><text x="115" y="240" class="d-t">Live display board</text><text x="115" y="262" class="d-s">running item of</text><text x="115" y="279" class="d-s">every court</text><text x="115" y="300" class="d-s">you type the CAPTCHA</text>
+<rect x="320" y="45" width="260" height="110" rx="12" class="d-mac"/><text x="450" y="78" class="d-t">The program</text><text x="450" y="100" class="d-s">finds your matters, day plans,</text><text x="450" y="117" class="d-s">chances, roster history,</text><text x="450" y="134" class="d-s">answers questions in seconds</text>
+<rect x="320" y="205" width="260" height="110" rx="12" class="d-mac"/><text x="450" y="238" class="d-t">Board Watcher in Chrome</text><text x="450" y="260" class="d-s">reads the board every 15 s,</text><text x="450" y="277" class="d-s">loads today's matters,</text><text x="450" y="294" class="d-s">updates itself</text>
+<rect x="690" y="45" width="190" height="110" rx="10" class="d-phone"/><text x="785" y="80" class="d-t">Telegram</text><text x="785" y="102" class="d-s">reports, reminders,</text><text x="785" y="119" class="d-s">answers · you ask,</text><text x="785" y="136" class="d-s">forward notices</text>
+<rect x="690" y="205" width="190" height="110" rx="10" class="d-phone"/><text x="785" y="240" class="d-t">Alarm app</text><text x="785" y="262" class="d-s">ntfy on Android</text><text x="785" y="279" class="d-s">Pushover on iPhone</text><text x="785" y="300" class="d-s">rings through silent</text>
+<rect x="320" y="350" width="260" height="60" rx="10" class="d-shared"/><text x="450" y="376" class="d-t">Updates from GitHub</text><text x="450" y="395" class="d-s">program and watcher update daily</text>
+<g class="d-line" marker-end="url(#ar)"><line x1="210" y1="100" x2="316" y2="100"/><line x1="210" y1="260" x2="316" y2="260"/><line x1="580" y1="95" x2="686" y2="95"/><line x1="580" y1="255" x2="686" y2="255"/><path d="M686,130 C650,130 620,130 584,130"/><line x1="420" y1="205" x2="420" y2="159"/><line x1="480" y1="159" x2="480" y2="201"/></g>
+<g class="d-line d-dash" marker-end="url(#ar)"><line x1="450" y1="350" x2="450" y2="319"/></g>
+<text x="263" y="90" class="d-a">downloads</text><text x="263" y="250" class="d-a">reads page</text><text x="633" y="85" class="d-a">messages</text><text x="633" y="245" class="d-a">alarms</text><text x="633" y="148" class="d-a">your questions</text><text x="380" y="186" class="d-a">whole board</text><text x="528" y="186" class="d-a">today's matters</text>
+</svg>
