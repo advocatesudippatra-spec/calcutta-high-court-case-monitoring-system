@@ -1,0 +1,455 @@
+<title>Case Monitoring Manual</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+/* One deliberate dark look (court-room night): the same on every viewer theme */
+:root{
+  color-scheme:dark;
+  --bg:#0E1218; --panel:#151B23; --panel-2:#1B222C; --ink:#E6E9EF; --muted:#9BA4B2; --line:#27303B;
+  --accent:#E08792; --accent-soft:#2B1B1F; --blue:#8EAFDF; --blue-soft:#1A2331;
+  --ok:#86C79A; --ok-soft:#172519; --gold:#DBAF5E; --gold-soft:#282114; --code:#1B222C;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--sans)}
+.wrap{max-width:920px;margin:0 auto;padding-inline:20px;padding-block:24px 64px}
+p,li,.lede,.day section span,figcaption{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+td{hyphens:auto;-webkit-hyphens:auto}
+.sample{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;background:var(--gold-soft);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;font-size:14px}
+.sample b{color:var(--gold)}
+header.top{display:grid;gap:10px;padding-block:24px;border-bottom:2px solid var(--accent)}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font:700 clamp(28px,5vw,42px)/1.12 var(--serif);margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:70ch}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 16px;padding-block:14px;font-size:14px;border-bottom:1px solid var(--line)}
+nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+h2{font:600 25px/1.25 var(--serif);margin:46px 0 10px;text-wrap:balance;scroll-margin-top:16px}
+h2 .n{font:500 14px/1 var(--mono);color:var(--accent);margin-right:10px;vertical-align:3px}
+h3{font:600 17px/1.4 var(--sans);margin:22px 0 6px}
+p{margin:8px 0;max-width:72ch}
+a{color:var(--blue)}
+code{font:14px var(--mono);background:var(--code);color:var(--ink);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+.cmd{display:flex;border:1px solid var(--line);border-radius:8px;background:var(--code);margin:8px 0 14px;overflow:hidden}
+.cmd pre{margin:0;padding:11px 14px;flex:1;overflow-x:auto;font:14px/1.5 var(--mono);white-space:pre;color:var(--ink)}
+.copy{flex:none;border:0;border-left:1px solid var(--line);background:var(--ink);color:var(--bg);font:600 13px var(--sans);padding:0 16px;cursor:pointer;min-width:80px}
+.copy:focus-visible,.tab:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
+.copy.done{background:var(--ok);color:#0E1218}
+.day{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+.day section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;align-content:start}
+.day .when{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.day .you{font-size:14px;color:var(--ok);font-weight:600;text-align:left}
+.day .you.none{color:var(--muted);font-weight:500}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:s}
+.steps>li{counter-increment:s;position:relative;padding-left:46px;padding-block:6px}
+.steps>li::before{content:counter(s);position:absolute;left:0;top:6px;width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font:600 15px/32px var(--mono);text-align:center}
+.steps>li>strong:first-child{display:block;font-size:17px;text-align:left}
+.term{background:#090C11;color:#D8DEE8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:13.5px/1.6 var(--mono);overflow-x:auto;white-space:pre;margin:8px 0 14px}
+.term .q{color:#8FB4E8}.term .a{color:#F2C879}.term .ok{color:#8FD49F}
+.tabs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 14px;font:600 14px var(--sans);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 18px;margin-top:8px}
+.tbl{overflow-x:auto;margin:10px 0 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--panel-2)}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+td.old{color:var(--muted)} td.new{color:var(--ok);font-weight:500}
+figure.diagram{margin:14px 0 6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto}
+figure.diagram svg{display:block;width:100%;min-width:660px;height:auto;font-family:var(--sans)}
+figure figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.d-col{font:600 12px var(--mono);letter-spacing:.12em;fill:var(--muted);text-anchor:middle}
+.d-court{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+.d-mac{fill:var(--blue-soft);stroke:var(--blue);stroke-width:1.4}
+.d-phone{fill:var(--ok-soft);stroke:var(--ok);stroke-width:1.4}
+.d-shared{fill:var(--gold-soft);stroke:var(--gold);stroke-width:1.4}
+.d-t{font-weight:600;font-size:15px;fill:var(--ink);text-anchor:middle}
+.d-s{font-size:12.5px;fill:var(--muted);text-anchor:middle}
+.d-a{font-size:11px;fill:var(--muted);text-anchor:middle}
+.d-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.d-dash{stroke-dasharray:5 4}
+.d-head{fill:var(--muted)}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin:12px 0}
+.feat section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.feat h3{margin:0 0 6px;font:600 16px/1.35 var(--serif);color:var(--ink)}
+.feat ul{margin:0;padding-left:18px;font-size:15px}.feat li{margin:4px 0}
+.chat{display:grid;gap:8px;max-width:600px;margin:10px 0}
+.msg{padding:9px 13px;border-radius:12px;font-size:14.5px;max-width:92%}
+.msg.me{justify-self:end;background:var(--blue);color:#0E1218}
+.msg.bot{justify-self:start;background:var(--panel);border:1px solid var(--line)}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0}
+.note p{margin:4px 0}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+@media (max-width:520px){.steps>li{padding-left:40px}.copy{min-width:64px;padding:0 10px}p,li{text-align:left}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.flow{list-style:none;margin:14px 0 8px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 30px;counter-reset:f}
+.flow>li{counter-increment:f;position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px;display:grid;gap:6px;align-content:start}
+.flow>li::before{content:counter(f);position:absolute;top:-13px;left:14px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#0E1218;font:600 13px/26px var(--mono);text-align:center}
+.flow .ft{font:600 16px/1.3 var(--serif);margin-top:4px}
+.flow .fd{font-size:14px;color:var(--muted);text-align:left}
+.flow .fc{font:500 12.5px/1.45 var(--mono);background:var(--code);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;white-space:nowrap;color:var(--ink)}
+.flow .where{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.flow .w-phone{color:var(--ok)} .flow .w-mac{color:var(--blue)} .flow .w-chrome{color:var(--gold)}
+.flow>li:not(:last-child)::after{content:"";position:absolute;right:-24px;top:50%;width:18px;height:2px;background:var(--muted)}
+.flow>li:nth-child(3n)::after{display:none}
+.flow>li.done{border-color:var(--ok)}
+.flow-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);margin:2px 0 6px}
+.flow-legend b{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:760px){.flow{grid-template-columns:1fr;gap:26px}.flow>li::after{display:none!important}
+.flow>li:not(:last-child)::before{box-shadow:0 0 0 0 transparent}}
+
+.lane-phone{fill:var(--ok-soft);stroke:none;opacity:.55}
+.lane-mac{fill:var(--blue-soft);stroke:none;opacity:.7}
+.lane-chrome{fill:var(--gold-soft);stroke:none;opacity:.7}
+.i-phone{fill:var(--panel);stroke:var(--ok);stroke-width:1.5}
+.i-mac{fill:var(--panel);stroke:var(--blue);stroke-width:1.5}
+.i-chrome{fill:var(--panel);stroke:var(--gold);stroke-width:1.5}
+.i-num{fill:var(--accent)}
+.i-numt{font:600 13px var(--mono);fill:#0E1218;text-anchor:middle}
+.i-t{font:600 15px var(--sans);fill:var(--ink)}
+.i-s{font-size:11.5px;fill:var(--muted)}
+.i-cbg{fill:var(--code);stroke:var(--line)}
+.i-c{font:500 11.5px var(--mono);fill:var(--ink)}
+</style>
+
+<div class="wrap">
+<div class="sample"><b>Sample manual</b> A preview of the manual for the general version, so the planned process can be reviewed before it is built. Names, the bot and links shown here are examples.</div>
+
+<header class="top">
+  <span class="eyebrow">Calcutta High Court · for advocates</span>
+  <h1>Calcutta High Court Case Monitoring System</h1>
+  <p class="lede">You enter your name once. Every night the system finds your matters in the Calcutta High Court cause lists and tells you on Telegram which court, which item, under which heading, and how likely each matter is to be reached. During court hours it watches the live display board and rings your phone when your item is near, when it is on, or when its heading closes before your item. At any time you can ask it about any court, any judge, any group of matters or any case, and forward it a bar notice when the courts rise early.</p>
+</header>
+<nav class="toc" aria-label="Sections">
+  <a href="#day">Your day</a><a href="#how">How it works</a><a href="#setup">Set up</a><a href="#phone">Phone</a><a href="#routine">Daily routine</a><a href="#likely">How "likely" works</a><a href="#ask">Ask the bot</a><a href="#notices">Early rising</a><a href="#commands">All commands</a><a href="#features">Feature checklist</a><a href="#faq">Questions</a>
+</nav>
+
+<h2 id="day"><span class="n">01</span>Your day with it</h2>
+<p>This is what arrives on your phone in an ordinary court week, and the one thing you do yourself. Everything else runs on your Mac without you.</p>
+<div class="day">
+  <section><span class="when">8:30 &amp; 9:30 PM</span><strong>Heads-up</strong><span>Only when a matter tomorrow is realistically likely, with its likely time.</span><span class="you none">You do nothing</span></section>
+  <section><span class="when">10:00 PM</span><strong>Tomorrow's report</strong><span>Every matter with its court, judge, item, heading, day plan, chance and reason, plus a table file. Buttons to add Original Side or Jalpaiguri.</span><span class="you none">Tap a button if needed</span></section>
+  <section><span class="when">Saturday / Sunday</span><strong>Monday's report</strong><span>Sent as soon as Monday's list is published, usually on Saturday.</span><span class="you none">You do nothing</span></section>
+  <section><span class="when">8:30 – 10:00 AM</span><strong>Reminders</strong><span>Every matter today with its chance; loud alarm at 10:00 when one is likely.</span><span class="you none">You do nothing</span></section>
+  <section><span class="when">About 10:15 AM</span><strong>Board opens</strong><span>The display board opens on your Mac by itself and the watcher loads today's matters.</span><span class="you">You type the CAPTCHA</span></section>
+  <section><span class="when">Court hours</span><strong>Live alerts</strong><span>20, 10 and 5 items away, "your item is on", or "heading closed before your item".</span><span class="you none">You do nothing</span></section>
+  <section><span class="when">5:00 PM</span><strong>Day summary</strong><span>How each of your courts moved, and what happened to each of your items.</span><span class="you none">You do nothing</span></section>
+  <section><span class="when">Any time</span><strong>Ask or forward</strong><span>Ask about any court, judge, group or case. Forward a bar notice and everything adjusts.</span><span class="you none">Optional</span></section>
+</div>
+
+<h2 id="how"><span class="n">02</span>How it works</h2>
+<p>There are three places involved. The High Court publishes cause lists as public PDF files and shows the running items on its display board. Your Mac reads both and works everything out. Your phone receives the results through Telegram and an alarm app. Nothing is kept on anyone else's computer.</p>
+<figure class="diagram">
+<svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cause lists and the display board flow into the program on your Mac, which sends messages and alarms to your phone">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker></defs>
+<text x="115" y="26" class="d-col">HIGH COURT</text><text x="450" y="26" class="d-col">YOUR MAC</text><text x="785" y="26" class="d-col">YOUR PHONE</text>
+<rect x="20" y="45" width="190" height="110" rx="10" class="d-court"/><text x="115" y="80" class="d-t">Cause lists</text><text x="115" y="102" class="d-s">daily, supplementary,</text><text x="115" y="119" class="d-s">monthly · public PDFs</text><text x="115" y="140" class="d-s">read every night</text>
+<rect x="20" y="205" width="190" height="110" rx="10" class="d-court"/><text x="115" y="240" class="d-t">Live display board</text><text x="115" y="262" class="d-s">running item of</text><text x="115" y="279" class="d-s">every court</text><text x="115" y="300" class="d-s">you type the CAPTCHA</text>
+<rect x="320" y="45" width="260" height="110" rx="12" class="d-mac"/><text x="450" y="78" class="d-t">The program</text><text x="450" y="100" class="d-s">finds your matters, day plans,</text><text x="450" y="117" class="d-s">chances, roster history,</text><text x="450" y="134" class="d-s">answers questions in seconds</text>
+<rect x="320" y="205" width="260" height="110" rx="12" class="d-mac"/><text x="450" y="238" class="d-t">Board Watcher in Chrome</text><text x="450" y="260" class="d-s">reads the board every 15 s,</text><text x="450" y="277" class="d-s">loads today's matters,</text><text x="450" y="294" class="d-s">updates itself</text>
+<rect x="690" y="45" width="190" height="110" rx="10" class="d-phone"/><text x="785" y="80" class="d-t">Telegram</text><text x="785" y="102" class="d-s">reports, reminders,</text><text x="785" y="119" class="d-s">answers · you ask,</text><text x="785" y="136" class="d-s">forward notices</text>
+<rect x="690" y="205" width="190" height="110" rx="10" class="d-phone"/><text x="785" y="240" class="d-t">Alarm app</text><text x="785" y="262" class="d-s">ntfy on Android</text><text x="785" y="279" class="d-s">Pushover on iPhone</text><text x="785" y="300" class="d-s">rings through silent</text>
+<rect x="320" y="350" width="260" height="60" rx="10" class="d-shared"/><text x="450" y="376" class="d-t">Updates from GitHub</text><text x="450" y="395" class="d-s">program and watcher update daily</text>
+<g class="d-line" marker-end="url(#ar)"><line x1="210" y1="100" x2="316" y2="100"/><line x1="210" y1="260" x2="316" y2="260"/><line x1="580" y1="95" x2="686" y2="95"/><line x1="580" y1="255" x2="686" y2="255"/><path d="M686,130 C650,130 620,130 584,130"/><line x1="420" y1="205" x2="420" y2="159"/><line x1="480" y1="159" x2="480" y2="201"/></g>
+<g class="d-line d-dash" marker-end="url(#ar)"><line x1="450" y1="350" x2="450" y2="319"/></g>
+<text x="263" y="90" class="d-a">downloads</text><text x="263" y="250" class="d-a">reads page</text><text x="633" y="85" class="d-a">messages</text><text x="633" y="245" class="d-a">alarms</text><text x="633" y="148" class="d-a">your questions</text><text x="380" y="186" class="d-a">whole board</text><text x="528" y="186" class="d-a">today's matters</text>
+</svg>
+<figcaption>Each person runs their own copy with their own Telegram bot. A second Mac can run as a backup; the two share one memory through a pinned Telegram message, so you never get duplicate messages.</figcaption>
+</figure>
+
+<h2 id="setup"><span class="n">03</span>Set up (about 15 minutes, once)</h2>
+<p>You need a Mac that is switched on during court hours (a Mac mini is ideal because it does not sleep), Google Chrome on that Mac, and Telegram on your phone. The installer uses the Python that comes with macOS; if the Mac asks to install Apple's developer tools, click Install and run the installer again.</p>
+<h3>Installation at a glance</h3>
+<p>Six steps, in order. Each column shows where the step is done, and each box shows the command or link for it. The detailed instructions follow below the diagram.</p>
+<figure class="diagram" aria-label="Installation steps">
+<svg viewBox="0 0 900 700" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Installation steps</title>
+<defs><marker id="ia" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker></defs>
+<rect x="10" y="8" width="280" height="682" rx="12" class="lane-phone"/>
+<rect x="310" y="8" width="280" height="682" rx="12" class="lane-mac"/>
+<rect x="610" y="8" width="280" height="682" rx="12" class="lane-chrome"/>
+<text x="150" y="28" class="d-col">ON YOUR PHONE</text>
+<text x="450" y="28" class="d-col">ON THE MAC · TERMINAL</text>
+<text x="750" y="28" class="d-col">ON THE MAC · CHROME</text>
+<g>
+<rect x="25" y="40" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="62" r="12" class="i-num"/><text x="45" y="66.5" class="i-numt">1</text>
+<text x="65" y="67" class="i-t">Make your bot</text>
+<text x="39" y="88" class="i-s">Open @BotFather in Telegram, keep the token</text>
+<rect x="37" y="96" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="109.5" class="i-c">/newbot</text>
+</g><g>
+<rect x="325" y="150" width="250" height="82" rx="10" class="i-mac"/>
+<circle cx="345" cy="172" r="12" class="i-num"/><text x="345" y="176.5" class="i-numt">2</text>
+<text x="365" y="177" class="i-t">Install the program</text>
+<text x="339" y="198" class="i-s">Open Terminal, paste one line</text>
+<rect x="337" y="206" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="344" y="219.5" class="i-c">curl -fsSL …/get.sh | bash</text>
+</g><g>
+<rect x="325" y="260" width="250" height="82" rx="10" class="i-mac"/>
+<circle cx="345" cy="282" r="12" class="i-num"/><text x="345" y="286.5" class="i-numt">3</text>
+<text x="365" y="287" class="i-t">Answer the questions</text>
+<text x="339" y="308" class="i-s">Name, token, phone, alarm app, sides</text>
+<rect x="337" y="316" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="344" y="329.5" class="i-c">~/.calllist/calllist setup</text>
+</g><g>
+<rect x="625" y="370" width="250" height="82" rx="10" class="i-chrome"/>
+<circle cx="645" cy="392" r="12" class="i-num"/><text x="645" y="396.5" class="i-numt">4</text>
+<text x="665" y="397" class="i-t">Add the Board Watcher</text>
+<text x="639" y="418" class="i-s">Tampermonkey, then open link → Install</text>
+<rect x="637" y="426" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="644" y="439.5" class="i-c">127.0.0.1:8765/watcher.user.js</text>
+</g><g>
+<rect x="25" y="480" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="502" r="12" class="i-num"/><text x="45" y="506.5" class="i-numt">5</text>
+<text x="65" y="507" class="i-t">Set up alarms</text>
+<text x="39" y="528" class="i-s">ntfy (Android) or Pushover (iPhone)</text>
+<rect x="37" y="536" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="549.5" class="i-c">/ntfy  ·  topic for the app</text>
+</g><g>
+<rect x="25" y="590" width="250" height="82" rx="10" class="i-phone"/>
+<circle cx="45" cy="612" r="12" class="i-num"/><text x="45" y="616.5" class="i-numt">6</text>
+<text x="65" y="617" class="i-t">Check it works</text>
+<text x="39" y="638" class="i-s">Send to your bot; reply in seconds</text>
+<rect x="37" y="646" width="226" height="19" rx="4" class="i-cbg"/>
+<text x="44" y="659.5" class="i-c">/status</text>
+</g>
+<g class="d-line" marker-end="url(#ia)">
+  <path d="M275,81 C310,81 330,100 450,100 L450,146"/>
+  <line x1="450" y1="232" x2="450" y2="256"/>
+  <path d="M575,301 C620,301 640,320 750,320 L750,366"/>
+  <path d="M625,411 C520,411 460,440 150,440 L150,476"/>
+  <line x1="150" y1="562" x2="150" y2="586"/>
+</g>
+<text x="372" y="84" class="d-a">token</text>
+<text x="486" y="248" class="d-a">then</text>
+<text x="700" y="304" class="d-a">program running</text>
+<text x="400" y="458" class="d-a">watcher installed</text>
+<text x="186" y="578" class="d-a">alarms on</text>
+</svg>
+<figcaption>About 15 minutes, once. After step 6 your only daily step is typing the CAPTCHA when the board opens at about 10:15 AM.</figcaption>
+</figure>
+
+<ol class="steps">
+<li><strong>Make your own Telegram bot</strong>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code>, choose any display name, and choose a username that ends in <code>bot</code>. BotFather replies with a token that looks like <code>123456789:AA…</code>. Keep it for step 3. Your bot talks only to you.</li>
+<li><strong>Install the program</strong>Open Terminal (Applications › Utilities › Terminal), paste this line and press Return. It downloads the program into your home folder and sets up the background schedule.
+<div class="cmd"><pre>curl -fsSL https://raw.githubusercontent.com/&lt;owner&gt;/calcutta-high-court-case-monitoring-system/main/get.sh | bash</pre><button class="copy" type="button">Copy</button></div>
+<p>For the private review copy, the installer first asks you to sign in to GitHub once in the browser.</p></li>
+<li><strong>Answer the setup questions</strong>The installer then asks a few questions and does everything else. You can run them again later with <code>calllist setup</code>.
+<div class="term"><span class="q">Your name as printed in the cause list</span> (other spellings separated by commas): <span class="a">ARUN KUMAR SEN, A K SEN</span>
+<span class="q">Paste your Telegram bot token:</span> <span class="a">123456789:AA…</span>
+<span class="ok">Token OK. Open your bot in Telegram and send: hello</span>
+<span class="ok">Connected to your chat.</span>
+<span class="q">Your phone:</span> [1] Android  [2] iPhone  <span class="a">2</span>
+<span class="q">Pushover user key for loud alarms (Enter to skip):</span> <span class="a">u9x…</span>
+<span class="q">Check every night:</span> [A] Appellate  [O] Original  [J] Jalpaiguri  <span class="a">A</span>
+<span class="q">Is this your main Mac (on during court hours)?</span> [Y/n] <span class="a">Y</span>
+<span class="q">Open the display board by itself at 10:15 on court days?</span> [Y/n] <span class="a">Y</span>
+<span class="ok">Done. A test message is on your phone.</span></div></li>
+<li><strong>Add the Board Watcher to Chrome</strong>Install <b>Tampermonkey</b> (by Jan Biniok) from the Chrome Web Store. Type <code>chrome://extensions</code> in Chrome's address bar, open Tampermonkey's Details and turn on <i>Allow User Scripts</i>. Then open the link below in Chrome on the same Mac and click <b>Install</b>. The watcher updates itself from then on, and it takes its alert settings from the program, so there is nothing to paste.
+<div class="cmd"><pre>http://127.0.0.1:8765/watcher.user.js</pre><button class="copy" type="button">Copy</button></div></li>
+<li><strong>Check that it works</strong>Send <code>/status</code> to your bot; a reply comes within seconds. On the Mac you can also run:
+<div class="cmd"><pre>~/.calllist/calllist status</pre><button class="copy" type="button">Copy</button></div></li>
+</ol>
+
+<h2 id="phone"><span class="n">04</span>Phone setup</h2>
+<p>Telegram carries every report, reminder and answer on both kinds of phone. For the loud alarm that rings even when the phone is silent, Android uses the free ntfy app and iPhone uses Pushover.</p>
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" id="tab-android" aria-selected="true" aria-controls="p-android">Android</button>
+  <button class="tab" role="tab" id="tab-iphone" aria-selected="false" aria-controls="p-iphone">iPhone</button>
+</div>
+<div class="panel" id="p-android" role="tabpanel" aria-labelledby="tab-android">
+<ol class="steps">
+<li><strong>Telegram</strong>Open your bot, tap its name, and turn Notifications on with a distinct sound, so court messages stand out from your groups.</li>
+<li><strong>ntfy (loud alarm, free)</strong>Install ntfy from the Play Store, tap +, and subscribe to the topic shown at the end of setup. To see the topic again, send <code>/ntfy</code> to your bot.</li>
+<li><strong>Ring through Do Not Disturb</strong>ntfy › Settings › turn on "Keep alerting for highest priority". Android Settings › Apps › ntfy › Notifications › Max priority › allow "Override Do Not Disturb". Android Settings › Apps › ntfy › Battery › Unrestricted.</li>
+</ol></div>
+<div class="panel" id="p-iphone" role="tabpanel" aria-labelledby="tab-iphone" hidden>
+<ol class="steps">
+<li><strong>Telegram</strong>Open your bot, tap its name and turn Notifications on. In iPhone Settings › Notifications › Telegram, turn on Time Sensitive Notifications and turn off Scheduled Summary.</li>
+<li><strong>Pushover (loud alarm, one-time purchase)</strong>Install Pushover from the App Store and enter your user key during setup. "5 away", "item ON" and "heading closed" then arrive as alarms that repeat until you acknowledge them. Allow Critical Alerts for Pushover so they sound even on silent.</li>
+<li><strong>Focus and Do Not Disturb</strong>iPhone Settings › Focus › your Focus › Apps › add Telegram and Pushover, so court alerts come through while other apps stay quiet.</li>
+</ol></div>
+
+<h2 id="routine"><span class="n">05</span>Daily routine</h2>
+<div class="tbl"><table>
+<tr><th>When</th><th>You do</th></tr>
+<tr><td>10:00 PM</td><td>Nothing. Tap <i>Original Side</i>, <i>Jalpaiguri</i> or <i>Both</i> under the question if you want those lists checked too; the report follows within minutes.</td></tr>
+<tr><td>About 10:15 AM</td><td>The display board opens on your Mac by itself. <b>Type the CAPTCHA</b> and click the page once. The watcher shows "Today's matters loaded" and starts.</td></tr>
+<tr><td>Court hours</td><td>Nothing. Your phone rings when your item is near or on. If the board stops updating or asks for the CAPTCHA again, you get a message.</td></tr>
+<tr><td>Courts rise early</td><td>Forward the bar notice to your bot, or send a photo of it. Chances are recalculated and the watcher stops at the rising time.</td></tr>
+<tr><td>On a MacBook</td><td>Keep the lid open and the charger in; Court Mode keeps it awake until 4:45 PM (send <code>/courton</code>).</td></tr>
+</table></div>
+
+<h2 id="likely"><span class="n">06</span>How "likely" is worked out</h2>
+<p>The system does not simply count how many items are ahead of yours. It reads each court's list the way an advocate would.</p>
+<ol class="steps">
+<li><strong>Day plan</strong>Every heading of the court's list with its item range and count, for example <i>Bail (2026) 21–421 · Anticipatory Bail 422–865 · Adjourned Bail 866–891</i>.</li>
+<li><strong>Bench note as a timetable</strong>"Till 12:30", "after 12:30 till recess", "after recess till 4 PM", "fixed matters from 4 PM", "his Lordship shall sit at 2:30", "appellate side matters from 2 PM" and "original side matters from 3 PM" become start and end times. A note for today's date beats a weekly rule; notes for other weekdays are ignored.</li>
+<li><strong>Fixed items</strong>Items marked like <code>[AT 4.00 P.M.]</code>, and headings with their own time, are placed at that time and are not counted as ahead of you.</li>
+<li><strong>Your item inside its heading</strong>Only the items ahead of yours in the same heading are measured against that heading's time. Example: <i>324th of 444 in Anticipatory Bail; slot 12:30–1:30 PM; the heading closes at recess and is not scheduled again today, so the item is likely not reached.</i></li>
+<li><strong>Monthly lists</strong>When a daily list says "items 415 to 531 of the combined monthly list dated 3rd August of Justice X", the system fetches that monthly list and tells you if your matters fall in the range.</li>
+<li><strong>Anything unclear is shown</strong>Notes are written differently every day. Anything the system cannot read is quoted in the report as "note not fully understood, check it yourself".</li>
+</ol>
+
+<h2 id="ask"><span class="n">07</span>Ask the bot</h2>
+<p>Type plain words to your bot; no special format is needed. It answers from the whole cause list (every court, every item, all sides), from the stored roster history, and from the live board while it is open. Add <code>tomorrow</code>, a date such as <code>29/09</code>, or <code>original side</code> / <code>jalpaiguri</code> to any question.</p>
+<div class="chat">
+  <div class="msg me">group 6</div>
+  <div class="msg bot"><b>Group-VI, today: 4 courts</b><br>Court 1 · Chief Justice &amp; Justice …<br>Court 11 · Justice … &amp; Justice …<br>Court 18 · Justice …<br>Court 446 · Justice …</div>
+  <div class="msg me">mentioning 25</div>
+  <div class="msg bot">Mentioning, Court 25: "on every Monday and Thursday at the first sitting of the court, only after service of notice to the other side."</div>
+  <div class="msg me">advocate a k sen</div>
+  <div class="msg bot">🟢 Court 22, item 3 · WPA/…/2025 · HIGH around 10:45 AM<br>⚪ Court 14, item 563 · WPA/…/2026 · VERY LOW</div>
+  <div class="msg me">running 35</div>
+  <div class="msg bot">📺 Court 35 running AD 884 · Adjourned Bail · CRM (NDPS)/…/2026 (board 3:40 PM)</div>
+  <div class="msg me">who took anticipatory bail before</div>
+  <div class="msg bot">Court 28 · Justice …: 02-01 → 17-07<br>Court 35 · Justice …: 14-07 → today</div>
+</div>
+<p style="font-size:14px;color:var(--muted)">Replies above are examples of the format, not real data.</p>
+
+<h2 id="notices"><span class="n">08</span>Courts rising early</h2>
+<p>When a condolence resolution or other notice says the courts will rise early or not work, tell your bot by forwarding the message, pasting its text, sending a photo or PDF of it (the Mac reads the text in the picture), or typing <code>/rise 3:30 pm</code>. The bot confirms, recalculates today's chances, and the watcher stops at that time instead of reporting that the board is not updating. "Abstain from work tomorrow" turns off that day's reminders and alerts. Even without a notice, a board that stops changing after 3:15 PM is treated as the courts having risen. To have the bot read notices posted in a Telegram group, add your bot to the group and send <code>/watchgroup</code> there yourself.</p>
+
+<h2 id="commands"><span class="n">09</span>All commands</h2>
+<h3>Send these to your bot in Telegram</h3>
+<div class="tbl"><table>
+<tr><th>Send</th><th>What it does</th></tr>
+<tr><td><code>/status</code></td><td>Whether it is running, which Mac replied, instant replies on or off, your ntfy topic, recent jobs.</td></tr>
+<tr><td><code>/now</code></td><td>Send the report for the next list day right away.</td></tr>
+<tr><td><code>/stop</code> · <code>/resume</code></td><td>Pause everything on all your Macs, and start again.</td></tr>
+<tr><td><code>/os</code> · <code>/jal</code> · <code>/both</code></td><td>Also check the Original Side, Jalpaiguri, or both, for the next list day.</td></tr>
+<tr><td><code>/monthly</code></td><td>Your matters in the latest monthly list.</td></tr>
+<tr><td><code>/rise 3:30 pm</code> · <code>cancel notice</code></td><td>Courts rise early today (or <code>/rise 1 pm tomorrow</code>); back to normal hours.</td></tr>
+<tr><td><code>/watchgroup</code></td><td>Sent by you inside a group: read court notices posted there.</td></tr>
+<tr><td><code>/courton 14:00</code> · <code>/courtoff</code></td><td>MacBook only: keep it awake until 2 PM; let it sleep again.</td></tr>
+<tr><td><code>/ntfy</code> · <code>/help</code></td><td>Show the alarm topic; list what you can ask.</td></tr>
+<tr><td>plain words</td><td><code>group 6</code>, <code>anticipatory bail</code>, <code>justice …</code>, <code>court 35</code>, <code>mentioning 25</code>, <code>fixed 35</code>, <code>find 6841</code>, <code>advocate …</code>, <code>party …</code>, <code>running 12</code>, <code>board</code>, <code>my courts</code>, <code>courts</code>, <code>group 6 history</code>, <code>justice … history</code>, <code>changes</code>.</td></tr>
+</table></div>
+<h3>Run these in Terminal on the Mac</h3>
+<p>Every command starts with <code>~/.calllist/calllist</code>. Copy the ones you need.</p>
+<div class="cmd"><pre>~/.calllist/calllist setup</pre><button class="copy" type="button">Copy</button></div>
+<p>Change your name, bot, phone type, alarm app or nightly sides.</p>
+<div class="cmd"><pre>~/.calllist/calllist status</pre><button class="copy" type="button">Copy</button></div>
+<p>Show whether it is active, the ntfy topic and the recent jobs.</p>
+<div class="cmd"><pre>~/.calllist/calllist report --date 29092026 --dry-run</pre><button class="copy" type="button">Copy</button></div>
+<p>See the report for a date on screen without sending it (leave out <code>--dry-run</code> to send it; add <code>--sides A,O,J</code> for other sides).</p>
+<div class="cmd"><pre>~/.calllist/calllist ask "group 6 tomorrow"</pre><button class="copy" type="button">Copy</button></div>
+<p>Ask the roster a question and read the answer in Terminal.</p>
+<div class="cmd"><pre>~/.calllist/calllist board</pre><button class="copy" type="button">Copy</button></div>
+<p>Open the display board in Chrome.</p>
+<div class="cmd"><pre>~/.calllist/calllist monthly --dry-run</pre><button class="copy" type="button">Copy</button></div>
+<p>Your matters in the latest monthly list.</p>
+<div class="cmd"><pre>~/.calllist/calllist backfill --from 01072026</pre><button class="copy" type="button">Copy</button></div>
+<p>Load past cause lists into the roster history (useful right after installing).</p>
+<div class="cmd"><pre>~/.calllist/calllist forget-database</pre><button class="copy" type="button">Copy</button></div>
+<p>Delete the stored roster history (asks you to type DELETE; add <code>--before 01012026</code> to delete only older lists).</p>
+<div class="cmd"><pre>~/.calllist/calllist simulate --at "2026-09-26 14:00"</pre><button class="copy" type="button">Copy</button></div>
+<p>Test what the schedule would do at a given time, without sending anything.</p>
+<div class="cmd"><pre>tail -40 ~/.calllist/logs/tick.log</pre><button class="copy" type="button">Copy</button></div>
+<p>See what the background check did recently.</p>
+<div class="cmd"><pre>~/calllist/uninstall.sh</pre><button class="copy" type="button">Copy</button></div>
+<p>Remove the background schedule from this Mac (your settings and history stay unless you delete <code>~/.calllist</code>).</p>
+
+<h2 id="features"><span class="n">10</span>Feature checklist</h2>
+<p>Everything the current system does is carried into the general version.</p>
+<div class="feat">
+<section><h3>Reads the cause lists</h3><ul>
+<li>Appellate Side daily list every night, and supplementary lists for the same date.</li>
+<li>Original Side and Jalpaiguri on a button at 10 PM or with <code>/os</code>, <code>/jal</code>, <code>/both</code>.</li>
+<li>Monthly lists: found automatically, with a report of all your matters in them.</li>
+<li>"Items x to y of the monthly list dated …" linked to your matters in that exact list.</li>
+<li>Monday's list checked from Saturday noon; holidays handled by looking ahead.</li>
+<li>"List not published yet" notice when a working day's list is late.</li>
+<li>Downloads retried automatically when the court site drops a connection.</li>
+</ul></section>
+<section><h3>Works out your chances</h3><ul>
+<li>Day plan of every court with your matter.</li>
+<li>Bench notes read as a timetable, including sitting times and the other side's hours.</li>
+<li>Fixed items and timed headings placed at their time.</li>
+<li>Your item judged inside its own heading, with "heading closes before your item" warnings.</li>
+<li>Unclear notes quoted for you to check.</li>
+</ul></section>
+<section><h3>Reports and reminders</h3><ul>
+<li>8:30 and 9:30 PM heads-up when a matter is realistically likely.</li>
+<li>10 PM report with day plans, reasons and VC links, plus a table file to open in a browser.</li>
+<li>Catch-up report in the morning if no Mac was on at 10 PM.</li>
+<li>8:30, 9:30 and 10 AM reminders listing every matter; alarm at 10 when one is likely.</li>
+<li>Everything also mirrored to the alarm app.</li>
+</ul></section>
+<section><h3>Watches the live board</h3><ul>
+<li>Today's matters loaded by itself; watcher updates itself.</li>
+<li>Alerts at 20, 10 and 5 items away, and "your item is on".</li>
+<li>"Heading closed before your item, probably not reached" alarm.</li>
+<li>Board jumping past your item, and "already past when watching began", reported.</li>
+<li>Planned moves (another heading at its time, fixed matters) not treated as skips.</li>
+<li>Alerts when the board stops updating, asks for the CAPTCHA again, or a court is not on the board by 10:50.</li>
+<li>Keeps the screen awake while the board is open; 30-day record of how courts moved; 5 PM summary.</li>
+</ul></section>
+<section><h3>Answers questions</h3><ul>
+<li>Any court, judge, group, kind of matter, case number, advocate or party.</li>
+<li>Mentioning rules and fixed hearings of a court, quoted from the list.</li>
+<li>Live running item of any court, with its case and heading.</li>
+<li>Reads a cause-list PDF you send it.</li>
+<li>Replies within seconds from the main Mac.</li>
+</ul></section>
+<section><h3>Remembers the roster</h3><ul>
+<li>Every court and item of every list read, kept until you delete it (about 2 MB a day).</li>
+<li>"Group 6 history", "who took … before", "justice … history".</li>
+<li>Message when a new list changes a court's judge or determination, showing what was added or removed.</li>
+<li>Past lists can be loaded; history deleted only on your command.</li>
+</ul></section>
+<section><h3>Court notices</h3><ul>
+<li>Reads forwarded or pasted notices, and photos or PDFs of notices.</li>
+<li>Reads notices posted in a group you register.</li>
+<li>Rising time recalculates chances and stops the watcher; "no work" days switch off reminders.</li>
+<li>A board frozen after 3:15 PM treated as the courts having risen.</li>
+</ul></section>
+<section><h3>Macs, phones and upkeep</h3><ul>
+<li>Main Mac plus optional backup Macs, sharing one memory: no duplicate messages.</li>
+<li>One alarm topic for all your Macs; every Mac updates itself from GitHub daily.</li>
+<li>MacBook extras: Court Mode to stay awake, and an 8:25 AM weekday wake-up.</li>
+<li>Android (ntfy) and iPhone (Pushover) alarms.</li>
+<li>Downloaded PDFs removed after 10 days; about 7–17 MB added per court day.</li>
+</ul></section>
+</div>
+
+<h2 id="faq"><span class="n">11</span>Questions</h2>
+<h3>Do I need a Mac?</h3>
+<p>Yes. The program and the Board Watcher run on a Mac that is on during court hours. A Mac mini works best because it never sleeps; a MacBook works with Court Mode and the lid open.</p>
+<h3>Will other users see my matters?</h3>
+<p>No. Each person makes their own Telegram bot and runs the program on their own Mac. Your name, matters, questions and history never leave your Mac and your own Telegram chat.</p>
+<h3>Does it get past the display board's CAPTCHA?</h3>
+<p>No. You type the CAPTCHA yourself once a day. The watcher only reads what the official page already shows and makes no requests to the court's server of its own.</p>
+<h3>How much space does it use?</h3>
+<p>About 7 to 17 MB a day. Downloaded PDFs are removed after 10 days. The roster history grows by about 2 MB a day, around 600 MB a year, and stays until you delete it.</p>
+<h3>Which courts does it cover?</h3>
+<p>The Calcutta High Court: Appellate Side, Original Side, the Jalpaiguri Circuit Bench and the Port Blair Circuit Bench.</p>
+<div class="note"><p>Chances are estimates from the cause list, the Bench's notes and the items ahead. Always check the determination yourself.</p></div>
+
+<footer>Calcutta High Court Case Monitoring System · sample manual · private repository for review</footer>
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var pre = btn.parentElement.querySelector('pre'), label = btn.textContent;
+    function done(m) { btn.textContent = m; btn.classList.add('done'); setTimeout(function () { btn.textContent = label; btn.classList.remove('done'); }, 1500); }
+    function fallback() { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); done('Press ⌘C'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(pre.textContent).then(function () { done('Copied'); }, fallback); } else { fallback(); }
+  });
+});
+document.querySelectorAll('.tab').forEach(function (t) {
+  t.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (x) {
+      var on = x === t; x.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+    });
+  });
+});
+</script>
