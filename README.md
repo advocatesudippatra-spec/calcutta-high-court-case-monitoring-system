@@ -59,7 +59,7 @@ Type the CAPTCHA when the display board opens on your Mac at about 10:15 AM. Eve
   item", jumps past your item; planned moves not treated as skips; stale board, CAPTCHA and "court not on
   board" alerts; stops when courts rise; 30-day record; 5 PM summary.
 - **Answers questions:** `group 6`, `anticipatory bail`, `justice …`, `court 35`, `mentioning 25`, `fixed 35`,
-  `find 6841`, `advocate …`, `party …`, `running 12`, `board`, `my courts`, `courts`, history and `changes`;
+  `find 1234`, `advocate …`, `party …`, `running 12`, `board`, `my courts`, `courts`, history and `changes`;
   reads a cause-list PDF you send.
 - **Remembers the roster:** every list read is kept until you delete it (about 2 MB a day); who took which
   matters and when; messages when a court's judge or determination changes; past lists can be loaded.

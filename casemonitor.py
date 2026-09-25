@@ -26,7 +26,7 @@ Commands (send to your bot on Telegram, from any phone or Mac):
   /os /jal /both    add Original Side / Jalpaiguri / both for the next list day
   /monthly  your matters in the latest monthly list      /ntfy  show the ntfy topic
   Anything else in plain words is a question to the roster: "group 6", "court 35",
-  "mentioning 25", "fixed 35", "justice krishna rao", "find 6841", "advocate x",
+  "mentioning 25", "fixed 35", "justice a b ghosh", "find 1234", "advocate x",
   "running 12", "board" (see /help)
   /courton [HH:MM]  keep the Mac awake for court   /courtoff  let it sleep again
   /rise 3:30 pm     courts rise early today (or forward/send the notice, even as a photo)

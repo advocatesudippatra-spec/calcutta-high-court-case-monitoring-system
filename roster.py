@@ -4,8 +4,8 @@ plus the live display board, and a plain-words question answerer for Telegram.
 
   index_list(date, side)   read a list PDF into the database (about 3 seconds)
   answer(text)             reply to a question such as
-                           "group 6", "justice krishna rao", "court 35", "mentioning 25",
-                           "fixed 35", "find WPA/6841/2026", "advocate subrata saha",
+                           "group 6", "justice a b ghosh", "court 35", "mentioning 25",
+                           "fixed 35", "find WPA/1234/2026", "advocate a k sen",
                            "running 12", "board", "my courts", "tomorrow court 18"
   save_board(rows)         store a board reading sent by the Board Watcher
 
@@ -632,16 +632,16 @@ def side_name(s):
 HELP = """<b>Ask me in plain words</b> (add "tomorrow", a date like 29/09, or "original side" / "jalpaiguri" if needed):
 • <code>group 6</code> — which court(s) take Group-VI
 • <code>anticipatory bail</code> / <code>service</code> — courts taking that kind of matter
-• <code>justice krishna rao</code> — what that judge takes, headings, note
+• <code>justice a b ghosh</code> — what that judge takes, headings, note
 • <code>court 35</code> or just <code>35</code> — full picture: determination, note, day plan, live item
 • <code>mentioning 25</code> — when mentioning is allowed in that court
 • <code>fixed 35</code> — fixed items / fixed hearings in that court
-• <code>find WPA/6841/2026</code> or <code>find 6841</code> — where a case is listed
-• <code>advocate subrata saha</code> / <code>party milan pradhan</code> — anyone's matters, with likelihood
+• <code>find WPA/1234/2026</code> or <code>find 1234</code> — where a case is listed
+• <code>advocate a k sen</code> / <code>party ram das</code> — anyone's matters, with likelihood
 • <code>running 12</code> / <code>board</code> / <code>my courts</code> — live display board (while the board tab is open)
 • <code>courts</code> — all courts sitting, with judges and times
 • <code>group 6 history</code> / <code>who took anticipatory bail before</code> — which courts/judges took it, and when
-• <code>justice krishna rao history</code> — what that judge took over time
+• <code>justice a b ghosh history</code> — what that judge took over time
 • <code>changes</code> — roster changes in the latest list (you also get these automatically)
 • <code>/help</code> — this list"""
 
