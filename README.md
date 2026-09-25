@@ -8,15 +8,14 @@ how likely it is to be reached. During court hours it watches the live display b
 when your item is near, when it is on, or when its heading closes before your item. At any time you can ask
 it about any court, judge, group of matters or case, and forward it a bar notice when the courts rise early.
 
-> **Private review copy.** Instruction manual (web page): https://claude.ai/artifact/3fDuCP8odrGhVFBABjJSu3
-> The same manual is in [`docs/manual.html`](docs/manual.html) (download it and open it in a browser).
+**Instruction manual:** https://advocatesudippatra-spec.github.io/calcutta-high-court-case-monitoring-system/ (also as a Claude artifact: https://claude.ai/artifact/3fDuCP8odrGhVFBABjJSu3, and in [`docs/manual.html`](docs/manual.html))
 
 ## Try it without installing
 
 Shows the report for any name and date on screen. Nothing is installed and no message is sent.
 
 ```bash
-gh repo clone advocatesudippatra-spec/calcutta-high-court-case-monitoring-system ~/CaseMonitoringSystem
+git clone https://github.com/advocatesudippatra-spec/calcutta-high-court-case-monitoring-system ~/CaseMonitoringSystem
 ~/CaseMonitoringSystem/try.sh "ARUN KUMAR SEN, A K SEN" 25092026
 ```
 
@@ -25,14 +24,13 @@ gh repo clone advocatesudippatra-spec/calcutta-high-court-case-monitoring-system
 You need a Mac that is on during court hours (a Mac mini is ideal), Google Chrome, and Telegram on your phone.
 
 1. **Make your Telegram bot:** in Telegram open **@BotFather**, send `/newbot`, and keep the token.
-2. **Install** (while the repository is private, sign in with the GitHub tool first):
-   ```bash
-   brew install gh && gh auth login
-   gh repo clone advocatesudippatra-spec/calcutta-high-court-case-monitoring-system ~/CaseMonitoringSystem && ~/CaseMonitoringSystem/install.sh
-   ```
-   Once public, one line does it:
+2. **Install** with one line in Terminal:
    ```bash
    curl -fsSL https://raw.githubusercontent.com/advocatesudippatra-spec/calcutta-high-court-case-monitoring-system/main/get.sh | bash
+   ```
+   or with the GitHub tool:
+   ```bash
+   gh repo clone advocatesudippatra-spec/calcutta-high-court-case-monitoring-system ~/CaseMonitoringSystem && ~/CaseMonitoringSystem/install.sh
    ```
 3. **Answer the setup questions:** name(s), bot token, Android or iPhone, Pushover keys (iPhone alarms), sides to
    check nightly, main Mac, and whether the board should open by itself at 10:15. Change them any time with
@@ -80,5 +78,26 @@ Type the CAPTCHA when the display board opens on your Mac at about 10:15 AM. Eve
 | `docs/manual.html` | The instruction manual |
 
 Everything runs on your own Mac with your own Telegram bot; your name, matters and history stay there.
-It only reads the court's public cause lists, and the display board CAPTCHA is always typed by you.
-Chances are estimates from the cause list and the Bench's notes; always check the determination yourself.
+
+## About the author
+
+**Sudip Patra** is an Advocate, enrolled in 2017, practising before the Supreme Court of India and the Calcutta
+High Court. An engineer by training, he studied law at the Rajiv Gandhi School of Intellectual Property Law,
+IIT Kharagpur, and business law at IIM Calcutta. He is the Founder and Principal Advocate of Patra's Law Chambers.
+This system grew out of his daily practice at the Calcutta High Court.
+
+**Patra's Law Chambers**, established in 2020, has offices in Kolkata and New Delhi. It appears before the
+Supreme Court of India, the Calcutta High Court, the Armed Forces Tribunal, the Central Administrative Tribunal,
+the Debts Recovery Tribunal and DRAT, CESTAT, the NCLT, and the district, sessions, family and consumer courts of
+West Bengal, in civil, criminal, service, banking, tax, property, family, intellectual property, company and
+cyber-law matters. Website: https://patraslawchambers.com/
+
+## Licence and disclaimer
+
+Released under the [MIT Licence](LICENSE) © 2026 Sudip Patra, Patra's Law Chambers. You may use, copy and adapt it
+freely; it comes with no warranty.
+
+The system only reads the Calcutta High Court's public cause lists; the display board's CAPTCHA is always typed by
+the user. Chances are estimates from the cause list and the Bench's notes and are not legal advice or a
+prediction by the Court; always check the determination and the court's own records. Not affiliated with the
+Calcutta High Court.
