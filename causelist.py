@@ -718,6 +718,26 @@ def _date_words(s):
     return ""
 
 
+def parse_synopsis(doc):
+    """The list's opening summary of Benches: {court room: sitting time, or "" when the list gives none}.
+    A court shown with "-" instead of a time is not expected to sit that day."""
+    first = next((i for i in range(min(len(doc), 12)) if "COURT NO." in doc[i].get_text()), 0)
+    lines = [l.strip() for i in range(first) for l in doc[i].get_text().splitlines() if l.strip()]
+    out = {}
+    for i, l in enumerate(lines):
+        if not re.match(r"^(On|For)\s+\d{2}-\d{2}-\d{4}$", l) or i < 2 or i + 1 >= len(lines):
+            continue
+        room = lines[i - 2] if re.fullmatch(r"\d{1,3}[A-Z]?", lines[i - 2]) else (
+            lines[i - 1] if re.fullmatch(r"\d{1,3}[A-Z]?", lines[i - 1]) else None)
+        if not room:
+            continue
+        nxt = lines[i + 1]
+        tm = nxt[3:].strip() if nxt.upper().startswith("AT ") and l.startswith("On") else ""
+        if tm or room not in out:  # a court listed twice sits if any entry gives a time
+            out[room] = tm
+    return out
+
+
 def monthly_refs(header):
     """Ranges of a monthly list this Bench takes up today: [(first, last, judge or '', list date or '')]."""
     text = re.sub(r"\s+", " ", (header.get("determination", "") + " " + header.get("notes", "")).upper())
@@ -748,6 +768,7 @@ def analyse(pdf_path, names, side="A", list_date="", kind="daily", monthly_looku
             if "COURT NO." in t and "MONTHLY" in t.upper() and monthly_refs({"determination": t}):
                 ref_pages.append(i)
     rows, seen = [], set()
+    synopsis = parse_synopsis(doc)
     label = SIDES[side][2] + ((" - " + KINDS[kind][1]) if KINDS[kind][1] else "")
     for pno in hit_pages + ref_pages:
         s, e = court_page_range(doc, pno)
@@ -761,8 +782,13 @@ def analyse(pdf_path, names, side="A", list_date="", kind="daily", monthly_looku
         base = dict(side=side, side_label=label, kind=kind, court_no=header["court_no"], bench=header["bench"],
                     time=header["time"], judges=" & ".join(header["judges"]), determination=header["determination"],
                     notes=header["notes"], vc_link=header["vc_link"], fixed_code=fixed_code(items))
+        no_time = header["court_no"] in synopsis and not synopsis[header["court_no"]]
         for it in mine:
             a = assess(it, items, header, plan, list_date, side)
+            if no_time and a["level"] != "NONE":
+                a = dict(a, level="NO SITTING TIME", realistic=False, eta="", closes="",
+                         comment="the list's summary of Benches gives no sitting time for this court today, so it may "
+                                 "not sit (the board is still watched); " + a["comment"])
             rows.append(dict(base, case_no=it["case_no"], case_name=it["case_name"], serial=it["serial"],
                              tagged=it["tagged"], item_no=("wt " if it["tagged"] else "") + str(it["serial"]),
                              section=it["section"], page=it["page"], fixed=it.get("fixed"),

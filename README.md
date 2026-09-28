@@ -145,6 +145,9 @@ The system does not simply count how many items are ahead of yours. It reads eac
    Justice X", the system fetches that monthly list and tells you if your matters fall in the range.
 6. **Anything unclear is shown:** notes are written differently every day. Anything the system cannot read is quoted
    in the report as "note not fully understood, check it yourself".
+7. **Courts not expected to sit:** a court shown with "-" instead of a time in the list's opening summary of Benches,
+   or whose note says it will not sit, is marked ⏸ or ⛔ in the report and left out of the reminders. Its board is
+   still watched, in case it sits after all.
 
 Result: 🟢 **HIGH** if the work ahead fits in 60% of the time, 🟡 **MODERATE** up to 100%, ⚪ LOW / VERY LOW beyond that.
 

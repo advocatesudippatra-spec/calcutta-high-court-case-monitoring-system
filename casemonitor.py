@@ -472,8 +472,8 @@ def watch_code(rows, date_str):
     """Board watcher code: your Appellate Side items plus each court's day plan."""
     items, plans, fixed = [], {}, {}
     for r in rows:
-        if r["side"] != "A" or r["level"] == "NONE":
-            continue
+        if r["side"] != "A":
+            continue  # courts marked not sitting are still watched, in case they sit after all
         it = {"c": r["court_no"], "i": r["serial"], "k": r["case_no"]}
         if r["kind"] == "monthly-link":
             it["m"] = 1  # watched only while the board shows a non-daily (monthly) list
@@ -490,7 +490,7 @@ def watch_code(rows, date_str):
     return json.dumps(code, separators=(",", ":"))
 
 
-LEVEL_ICON = {"HIGH": "🟢", "MODERATE": "🟡", "LOW": "⚪", "VERY LOW": "⚪", "NONE": "⛔"}
+LEVEL_ICON = {"HIGH": "🟢", "MODERATE": "🟡", "LOW": "⚪", "VERY LOW": "⚪", "NONE": "⛔", "NO SITTING TIME": "⏸"}
 
 
 def _e(s):
@@ -530,6 +530,9 @@ def full_report_text(rows, date_str, cfg, header="Cause list report", sides=None
 
 
 def reminder_text(rows, date_str, label, only_likely=False, board=False):
+    # courts not sitting, or with no sitting time in the list's summary, are left out of reminders
+    # (they stay in the report and the board watcher)
+    rows = [r for r in rows if r["level"] not in ("NO SITTING TIME", "NONE")]
     shown = [r for r in rows if r["realistic"]] if only_likely else rows
     if not shown:
         return None
