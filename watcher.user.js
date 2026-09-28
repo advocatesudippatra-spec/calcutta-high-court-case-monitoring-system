@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calcutta HC Board Watcher (Case Monitor)
 // @namespace    casemonitor
-// @version      3.2
+// @version      3.3
 // @description  Watches the official Calcutta HC display board (after YOU enter the CAPTCHA), knows each court's day plan, and pushes phone alerts when your item is near, on, or when its heading closes before your item.
 // @match        https://display.calcuttahighcourt.gov.in/principal.php*
 // @match        https://display.calcuttahighcourt.gov.in/jalpaiguri.php*
@@ -362,6 +362,8 @@
   function risenFlag() { return `hcw_risen_${today()}`; }
   function check() {
     const now = nowMin();
+    // keep talking to the program even while stood down, so a cancelled notice is picked up
+    if (riseAt !== null) { const b0 = readBoard(); lastSentAt = 0; shareBoard(b0, fetchedAt()); }
     // courts not working today / risen early per a notice sent to the bot
     if (riseAt === 0) { status('No court work today (per the notice sent to the bot). Nothing to watch.'); return; }
     if (riseAt !== null && riseAt > 0 && now >= riseAt + 10) {
@@ -452,7 +454,7 @@
   panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;width:360px;background:#fff;color:#111;' +
     'border:2px solid #4f378a;border-radius:10px;padding:10px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25)';
   panel.innerHTML = `
-    <b>Board Watcher 3.2</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
+    <b>Board Watcher 3.3</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
     <div id=hcw-body>
       <pre id=hcw-status style="white-space:pre-wrap;background:#f4f1fa;padding:6px;border-radius:6px;max-height:180px;overflow:auto"></pre>
       <label><b>Paste code here</b> (the board watcher code from Telegram, or the settings code)</label>
