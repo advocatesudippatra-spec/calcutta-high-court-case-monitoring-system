@@ -727,8 +727,17 @@ def handle_update(u, tg, state, cfg, out, now):
             else:
                 out("Send e.g. <code>/rise 3:30 pm</code>, <code>/rise 1 pm tomorrow</code>, or <code>/rise cancel</code>.", silent=True)
         return
+    # A typed message counts as a court notice only when it reads like one (a resolution / condolence / bar notice);
+    # instructions or questions that merely mention courts not sitting are not notices.
     n = parse_notice(text, now, lenient=forwarded) if (forwarded or not cmd.startswith("/")) else None
-    if n and (forwarded or re.search(r"RESOLUTION|CONDOLENCE|DEMISE|BAR ASSOCIATION|COURTS? (WILL|SHALL)|NOTICE", text.upper())):
+    if n and not forwarded:
+        up = text.upper()
+        strong = re.search(r"RESOLUTION|CONDOLENCE|DEMISE|PASSED AWAY|PASSING AWAY|OBITUARY|BAR ASSOCIATION|BAR LIBRARY|"
+                           r"INCORPORATED LAW|MARK OF RESPECT", up)
+        chatty = re.search(r"\b(YOU|YOUR|PLEASE|KINDLY|CAN YOU|CHECK|UPDATE|PROGRAM|BOT|REMIND)\b", up)
+        if not strong or (chatty and not re.search(r"RESOLUTION|CONDOLENCE", up)):
+            n = None
+    if n:
         apply_notice(state, cfg, out, now, n, "forwarded message" if forwarded else "message")
         return
     if cmd == "/stop":
