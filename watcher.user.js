@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calcutta HC Board Watcher (Case Monitor)
 // @namespace    casemonitor
-// @version      3.0
+// @version      3.1
 // @description  Watches the official Calcutta HC display board (after YOU enter the CAPTCHA), knows each court's day plan, and pushes phone alerts when your item is near, on, or when its heading closes before your item.
 // @match        https://display.calcuttahighcourt.gov.in/principal.php*
 // @match        https://display.calcuttahighcourt.gov.in/jalpaiguri.php*
@@ -29,6 +29,8 @@
  *   heading before reaching your item, "heading closed - probably not reached".
  *   A planned move (to another heading at the time the note gives, or to fixed
  *   matters at their time) is not treated as a skip.
+ * - In courts where your item is likely today, a matter running over 10 minutes is reported, again at 20, 30...
+ *   minutes, and once more (with its length) when it ends.
  * - It keeps a small record of how each court moved (only the changes, 30 days)
  *   and sends a summary at 5 PM.
  * - When courts rise early (a bar resolution / notice sent to the bot), or the board stops
@@ -68,7 +70,7 @@
     }
     return {
       d: raw.d || '', plans: raw.p || {}, fixed: raw.f || {},
-      watch: (raw.w || []).map(w => ({ side: 'A', court: String(w.c), item: +w.i, kase: w.k || '', sec: w.s || '', monthly: !!w.m })),
+      watch: (raw.w || []).map(w => ({ side: 'A', court: String(w.c), item: +w.i, kase: w.k || '', sec: w.s || '', monthly: !!w.m, likely: !!w.l })),
     };
   }
   const cfg = () => ({ ntfy: LS.getItem('hcw_ntfy') || '', tgToken: LS.getItem('hcw_tg_token') || '', tgChat: LS.getItem('hcw_tg_chat') || '',
@@ -297,6 +299,36 @@
     return line + verdict;
   }
 
+  // ------------------------------------------------------------ long-running matter (only courts where your item is likely today)
+  // Checks every 15 seconds but writes only at 10, 20, 30... minutes, and once when that item ends.
+  function longRun(row, c, now) {
+    const mine = c.watch.filter(w => w.court === row.room && w.likely && !w.monthly && row.daily && w.item > row.serial);
+    if (!mine.length || isNaN(row.serial)) return '';
+    const w = mine.reduce((a, b) => (a.item <= b.item ? a : b));
+    const k = `hcw_long_${today()}_${row.room}`;
+    const st = jget(k, { s: null, since: 0, sent: 0 });
+    const cur = row.serialText;
+    if (st.s !== cur) {
+      if (st.s && st.sent >= 10) {
+        const ran = Math.max(1, Math.round((Date.now() - st.since) / 60e3));
+        push(`Court ${row.room}: the long matter has ended`,
+          `Item ${st.s} ran for about ${ran} minutes and has ended. Now at ${cur}.\nYour item ${w.item} is ${w.item - row.serial} away.\n${w.kase}`, 4);
+      }
+      jset(k, { s: cur, since: Date.now(), sent: 0 });
+      return '';
+    }
+    const mins = Math.floor((Date.now() - st.since) / 60e3);
+    const due = (st.sent || 0) + 10;
+    if (mins >= due) {
+      const step = Math.floor(mins / 10) * 10;
+      push(step <= 10 ? `Court ${row.room}: item ${cur} running over 10 minutes` : `Court ${row.room}: item ${cur} still going after ${step} minutes`,
+        (step <= 10 ? 'The matter may take a while. I will keep watching and tell you when it ends.' : 'Still on. I will tell you when it ends.') +
+        `\nYour item ${w.item} is ${w.item - row.serial} away.\n${w.kase}`, 3);
+      st.sent = step; jset(k, st);
+    }
+    return mins >= 10 ? ` · on for ${mins} min` : '';
+  }
+
   // ------------------------------------------------------------ main check
   let lastFetched = '', lastFetchedChange = Date.now(), captchaSince = 0;
   const LATE_FREEZE = 15 * 60 + 15;       // a board frozen after this time = courts have risen
@@ -358,7 +390,7 @@
         }
         return;
       }
-      lines.push(checkItem(w, row, c, now));
+      lines.push(checkItem(w, row, c, now) + (stale ? '' : longRun(row, c, now)));
     });
     status((stale ? `⚠ Board data stuck at ${f}: reload + CAPTCHA\n` : '') + (autoNote ? autoNote + '\n' : '') + lines.join('\n') +
       (bridgeOk === false ? '\n(Telegram questions about the board: the Case Monitor listener is not running on this Mac)' : ''));
@@ -393,7 +425,7 @@
   panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;width:360px;background:#fff;color:#111;' +
     'border:2px solid #4f378a;border-radius:10px;padding:10px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25)';
   panel.innerHTML = `
-    <b>Board Watcher 3</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
+    <b>Board Watcher 3.1</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
     <div id=hcw-body>
       <pre id=hcw-status style="white-space:pre-wrap;background:#f4f1fa;padding:6px;border-radius:6px;max-height:180px;overflow:auto"></pre>
       <label><b>Paste code here</b> (the board watcher code from Telegram, or the settings code)</label>

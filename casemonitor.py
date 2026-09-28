@@ -475,6 +475,8 @@ def watch_code(rows, date_str):
         if r["side"] != "A":
             continue  # courts marked not sitting are still watched, in case they sit after all
         it = {"c": r["court_no"], "i": r["serial"], "k": r["case_no"]}
+        if r.get("realistic"):
+            it["l"] = 1  # likely today: long-running matters in this court are reported
         if r["kind"] == "monthly-link":
             it["m"] = 1  # watched only while the board shows a non-daily (monthly) list
         elif r.get("section"):
@@ -892,6 +894,80 @@ def watcher_update_notice(state, out):
     return
 
 
+def _my_courts(rows):
+    """{court no: judges} of your matters (every side checked), for matching notices."""
+    out = {}
+    for r in rows:
+        if r.get("court_no"):
+            out.setdefault(r["court_no"], r.get("judges", ""))
+    return out
+
+
+def notice_lines(rows, d, con=None):
+    """Roster notices for day d that name your courts or their judges: [(notice, [reasons])]."""
+    con = con or roster.db()
+    courts = _my_courts(rows)
+    hits = []
+    for n in roster.notices_for_day(con, d):
+        why = roster.notice_hits(n, courts)
+        if why:
+            hits.append((n, why))
+    return hits
+
+
+def notice_text(n, why, header="📢 Notice affecting your matters"):
+    return "<b>%s</b>\n%s <i>(uploaded %s)</i>\n<b>Concerns:</b> %s\n<i>%s</i>\n%s" % (
+        header, _e(n["title"]), _e(n["uploaded"]), _e(", ".join(why)), _e(roster.notice_snippet(n, why[0])), _e(n["url"]))
+
+
+def check_notices(cfg, state, out, now, dry=False):
+    """10:30 AM to 2 PM on court days with your matters: read new roster notices (sitting changes, modified
+    determinations, assignment of cases), keep them all, and tell you only about those naming your courts/judges."""
+    hm = now.hour * 60 + now.minute
+    if now.weekday() >= 5 or not (10 * 60 + 25 <= hm < 14 * 60):
+        return
+    last = float(state.data.get("ntc_last", 0))
+    if time.time() - last < 9 * 60 and not dry:
+        return
+    d = dstr(now.date())
+    state.data["ntc_last"] = int(time.time())
+    try:
+        pub, rows = analyse_day(cfg, d)
+    except Exception as ex:
+        print("notice check: list not read:", ex)
+        return
+    extra = [s for s in state.data.get("xs", {}).get(d, "") if s in cl.SIDES]
+    if extra:
+        rows += analyse_day(cfg, d, sides=extra)[1]
+    if not rows:
+        if not dry:
+            state.save()
+        return  # no matters today: nothing to watch for
+    con = roster.db()
+    first = not state.done("ntq:%s" % d)
+    try:
+        roster.update_notices(pages=2 if first else 1, ocr=os.path.join(HOME, "bin", "ocr"), con=con)
+    except Exception as ex:
+        print("notice check: notices not read:", ex)
+    sent = 0
+    for n, why in notice_lines(rows, d, con):
+        key = "nt:%s:%s" % (n["id"], d)
+        if state.done(key):
+            continue
+        out(notice_text(n, why))
+        sent += 1
+        if not dry:
+            state.data["sent"][key] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
+    if first:
+        if not sent:
+            out("📢 Notices checked (%s): none so far concerns your courts today. I keep checking until 2 PM." %
+                now.strftime("%I:%M %p").lstrip("0"), silent=True)
+        if not dry:
+            state.data["sent"]["ntq:%s" % d] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
+    if not dry:
+        state.save()
+
+
 def list_day_for(now):
     """The next day a list is expected: tomorrow, or Monday over a weekend."""
     tomorrow = now.date() + dt.timedelta(days=1)
@@ -1049,9 +1125,14 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
             log("%s: another Mac is handling it." % key)
             continue
         if kind == "report":
+            try:
+                rows_note = "\n\n".join(notice_text(n, why, "📢 Notice in force for %s" % pretty(d))
+                                          for n, why in notice_lines(rows, d))
+            except Exception:
+                rows_note = ""
             title = ("Cause list report" if now.hour >= 20 else "Cause list report (catch-up)"
                      if ddate(d) == now.date() else "Cause list report (published early)")
-            out(full_report_text(rows, d, cfg, title))
+            out(full_report_text(rows, d, cfg, title) + (("\n\n" + rows_note) if rows_note else ""))
             path = save_html(rows, d, cfg)
             if tg and not dry and rows:
                 try:
@@ -1077,6 +1158,11 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
             if msg:
                 out(msg, alarm=any(r["realistic"] for r in rows) and slot == "m1000")
         state.mark(key, dev)
+
+    try:
+        check_notices(cfg, state, out, now, dry)
+    except Exception as ex:
+        log("notice check failed: %r" % ex)
 
     # extra sides you asked for (Original Side / Jalpaiguri): report as soon as each is published
     for d, picked in list(state.data["xs"].items()):

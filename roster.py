@@ -67,6 +67,8 @@ def db():
     CREATE TABLE IF NOT EXISTS board(t REAL, side TEXT, court TEXT, serial TEXT, detail TEXT, daily INT,
         judges TEXT, fetched TEXT);
     CREATE INDEX IF NOT EXISTS board_c ON board(court, t);
+    CREATE TABLE IF NOT EXISTS notices(id INTEGER PRIMARY KEY, title TEXT, uploaded TEXT, kind TEXT, dates TEXT,
+        courts TEXT, judges TEXT, url TEXT, text TEXT, fetched REAL);
     CREATE TABLE IF NOT EXISTS board_now(side TEXT, court TEXT, serial TEXT, detail TEXT, daily INT,
         judges TEXT, fetched TEXT, t REAL, PRIMARY KEY(side, court));
     """)
@@ -625,6 +627,192 @@ HIST_WORDS = {"WHICH", "COURT", "COURTS", "TAKING", "TAKES", "TAKE", "TOOK", "MA
               "HON", "BLE", "THE", "WHO", "KIND", "DOES", "DID", "OVER", "TIME", "LORDSHIP", "CHANGES", "CHANGED"}
 
 
+# ------------------------------------------------------------------ roster notices (sitting / determination)
+NOTICE_LIST = "https://www.calcuttahighcourt.gov.in/Notices/roster"
+
+
+def _notice_kind(title):
+    t = title.upper()
+    if "DETERMINATION" in t:
+        return "modified determination"
+    if "ASSIGNMENT" in t:
+        return "assignment of cases"
+    if "SITTING" in t or "SIT " in t or "TAKEN UP" in t or "COURT NO" in t:
+        return "sitting"
+    if "ROSTER" in t:
+        return "roster"
+    return "other"
+
+
+def _notice_dates(text):
+    """Dates a notice speaks about, as DDMMYYYY (e.g. 'from 28.09.2026 to 09.10.2026')."""
+    out = []
+    for d, m, y in re.findall(r"\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b", text):
+        v = "%02d%02d%s" % (int(d), int(m), y)
+        if v not in out:
+            out.append(v)
+    return out
+
+
+def _notice_courts(text):
+    return sorted({c for c in re.findall(r"COURT\s*(?:ROOM\s*)?NO\.?\s*(\d{1,3})\b", text.upper())}, key=int)
+
+
+def _notice_judges(text):
+    t = re.sub(r"\s+", " ", text.upper())
+    names = re.findall(r"JUSTICE\s+((?:DR\.?\s+)?[A-Z][A-Z.]*(?:\s+[A-Z][A-Z.()]*){0,4}?)(?=\s*(?:,|\.|;|\(|\bWILL\b|\bSHALL\b|\bIS\b|\bARE\b|"
+                       r"\bAND\b|\bSITTING\b|\bSITS\b|\bIN\b|\bTO\b|\bHAS\b|\bWHO\b|\bWHOSE\b|\bON\b|\bAT\b|\bFROM\b|\bOF\b|$))", t)
+    out = []
+    for n in names:
+        n = re.sub(r"\s+", " ", n).strip(" .")
+        if n and n not in out and len(n) > 3:
+            out.append(n)
+    return out
+
+
+def _fetch_bytes(url):
+    return cl._fetch(url, timeout=120)
+
+
+def _pdf_text(data, ocr=None):
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+    except Exception:
+        return ""
+    txt = "\n".join(p.get_text() for p in doc)
+    if len(txt.strip()) < 40 and len(doc) and ocr and os.path.exists(ocr):  # scanned notice: read it as a picture
+        import subprocess
+        import tempfile
+        parts = []
+        for i in range(min(len(doc), 4)):
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+                doc[i].get_pixmap(dpi=200).save(f.name)
+                r = subprocess.run([ocr, f.name], capture_output=True, text=True, timeout=180)
+                parts.append(r.stdout)
+                os.remove(f.name)
+        txt = "\n".join(parts)
+    return txt
+
+
+def notice_pages(pages=1):
+    """[(id, title, uploaded, url)] from the High Court's 'Assignment / Determination / Roster / Sitting' notices."""
+    import html as _h
+    out = []
+    for n in range(1, pages + 1):
+        url = NOTICE_LIST + ("?page=%d" % n if n > 1 else "")
+        page = (_fetch_bytes(url) or b"").decode("utf-8", "ignore")
+        for href, inner in re.findall(r'(?is)<a[^>]+class="[^"]*list-group-item[^"]*"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', page) + \
+                re.findall(r'(?is)<a[^>]+href="([^"]+)"[^>]*class="[^"]*list-group-item[^"]*"[^>]*>(.*?)</a>', page):
+            m = re.search(r"/roster/(\d+)", href)
+            if not m:
+                continue
+            text = re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", inner))).strip()
+            up = re.search(r"Uploaded:\s*(.+)$", text)
+            title = text[:up.start()].strip() if up else text
+            out.append((int(m.group(1)), title, up.group(1).strip() if up else "", href))
+    seen, res = set(), []
+    for x in out:
+        if x[0] not in seen:
+            seen.add(x[0])
+            res.append(x)
+    return res
+
+
+def update_notices(pages=1, ocr=None, con=None):
+    """Store any new roster notices (text read from the PDF). Returns the new rows. Nothing is ever deleted."""
+    con = con or db()
+    new = []
+    for nid, title, uploaded, url in notice_pages(pages):
+        if con.execute("SELECT 1 FROM notices WHERE id=?", (nid,)).fetchone():
+            continue
+        try:
+            text = _pdf_text(_fetch_bytes(url) or b"", ocr)
+        except Exception as ex:
+            print("notice %s not read: %s" % (nid, ex))
+            text = ""
+        both = title + "\n" + text
+        row = (nid, title, uploaded, _notice_kind(title), ",".join(_notice_dates(both)),
+               ",".join(_notice_courts(both)), "|".join(_notice_judges(both)), url, text, time.time())
+        con.execute("INSERT OR REPLACE INTO notices VALUES(?,?,?,?,?,?,?,?,?,?)", row)
+        new.append(dict(zip(("id", "title", "uploaded", "kind", "dates", "courts", "judges", "url", "text"), row[:9])))
+    con.commit()
+    return new
+
+
+def _judge_words(judges):
+    return [w for w in re.findall(r"[A-Z]{3,}", (judges or "").upper()) if w not in ("JUSTICE", "HON", "BLE", "THE", "CHIEF", "ACTING")]
+
+
+def notice_hits(notice, courts):
+    """Why a notice concerns your courts: courts = {court no: judges text}. Returns [reason] (empty = not yours)."""
+    text = re.sub(r"\s+", " ", (notice["title"] + " " + (notice["text"] or "")).upper())
+    ncourts = set((notice["courts"] or "").split(",")) - {""}
+    reasons = []
+    for court, judges in courts.items():
+        if court in ncourts:
+            reasons.append("Court %s" % court)
+            continue
+        ws = _judge_words(judges)
+        # a judge counts when all of one judge's name words appear (e.g. both 'SUDIP' and 'DEB')
+        for name in (judges or "").upper().split("&"):
+            nw = _judge_words(name)
+            if len(nw) >= 2 and all(re.search(r"\b%s\b" % re.escape(w), text) for w in nw):
+                reasons.append("Justice %s (Court %s)" % (" ".join(nw).title(), court))
+                break
+        del ws
+    return reasons
+
+
+def notice_snippet(notice, reason, width=320):
+    text = re.sub(r"\s+", " ", notice["text"] or notice["title"])
+    key = reason.replace("Justice ", "").split(" (")[0]
+    words = [w for w in re.findall(r"[A-Za-z0-9]{2,}", key) if w.upper() not in ("COURT",)] or [key]
+    m = re.search(r"COURT\s*NO\.?\s*%s\b" % re.escape(words[-1]), text, re.I) if key.startswith("Court") else \
+        re.search(re.escape(words[-1]), text, re.I)
+    if not m:
+        return text[:width]
+    a = max(0, m.start() - width // 2)
+    return ("…" if a else "") + text[a:a + width].strip() + "…"
+
+
+def notices_for_day(con, ds, since_id=0):
+    """Notices uploaded for / speaking about a list day (and determinations in force that day)."""
+    rows = con.execute("SELECT * FROM notices WHERE id>? ORDER BY id DESC LIMIT 400", (since_id,)).fetchall()
+    out = []
+    day = dt.datetime.strptime(ds, "%d%m%Y").date()
+    for r in rows:
+        dates = [x for x in (r["dates"] or "").split(",") if x]
+        ds_list = []
+        for x in dates:
+            try:
+                ds_list.append(dt.datetime.strptime(x, "%d%m%Y").date())
+            except ValueError:
+                pass
+        if ds in dates:
+            out.append(r)
+        elif r["kind"] in ("modified determination", "assignment of cases") and len(ds_list) >= 2 and min(ds_list) <= day <= max(ds_list):
+            out.append(r)  # 'from 28.09.2026 to 09.10.2026' covers the day
+    return out
+
+
+def ans_notices(con, ds, court=None, kind=None):
+    rows = notices_for_day(con, ds) if not court and not kind else con.execute(
+        "SELECT * FROM notices ORDER BY id DESC LIMIT 300").fetchall()
+    if court:
+        rows = [r for r in rows if court in (r["courts"] or "").split(",")]
+    if kind:
+        rows = [r for r in rows if r["kind"] == kind]
+    if not rows:
+        return "No stored roster notice%s%s." % ((" for Court %s" % court) if court else "",
+                                                  (" for %s" % pretty(ds)) if not court and not kind else "")
+    out = ["<b>Roster notices%s%s</b> (%d)" % ((" · Court %s" % court) if court else "", (" · " + kind) if kind else
+                                               (" for %s" % pretty(ds) if not court else ""), len(rows))]
+    for r in rows[:15]:
+        out.append("\n• <b>%s</b> <i>(uploaded %s)</i>\n%s\n%s" % (_e(r["title"]), _e(r["uploaded"]),
+                                                                  _e(re.sub(r"\s+", " ", r["text"] or "")[:260]), _e(r["url"])))
+    return "\n".join(out)
+
+
 def side_name(s):
     return cl.SIDES.get(s, ("", "", s))[2]
 
@@ -643,6 +831,7 @@ HELP = """<b>Ask me in plain words</b> (add "tomorrow", a date like 29/09, or "o
 • <code>group 6 history</code> / <code>who took anticipatory bail before</code> — which courts/judges took it, and when
 • <code>justice a b ghosh history</code> — what that judge took over time
 • <code>changes</code> — roster changes in the latest list (you also get these automatically)
+• <code>notices</code> / <code>notices court 22</code> / <code>modified determination</code> — the High Court's sitting and determination notices (kept for good)
 • <code>/help</code> — this list"""
 
 
@@ -701,6 +890,9 @@ def answer(text, names=()):
     if re.search(r"\b(ROSTER )?CHANGES?\b|\bWHAT CHANGED\b", t) and not re.search(r"\bFIND\b", t):
         return done(ans_changes(con, side, ds))
 
+    if re.search(r"\bNOTICES?\b|\bMODIFIED DETERMINATIONS?\b|\bASSIGNMENT\b|\bNOT SITTING\b", t):
+        kind = "modified determination" if "DETERMINATION" in t else ("assignment of cases" if "ASSIGNMENT" in t else None)
+        return done(ans_notices(con, ds, loose_court, kind))
     if re.search(r"\bMY (COURTS?|MATTERS?|ITEMS?|CASES?)\b|\bMINE\b", t) and names:
         who = names[0]
         all_sides()

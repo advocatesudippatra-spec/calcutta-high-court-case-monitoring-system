@@ -15,7 +15,7 @@ matters or any case, and forward it a bar notice when the courts rise early.
 
 **Contents:** [Your day](#your-day-with-it) · [How it works](#how-it-works) · [Set up](#set-up-about-15-minutes-once)
 · [Phone](#phone-setup) · [Daily routine](#daily-routine) · [How "likely" works](#how-likely-is-worked-out)
-· [Ask the bot](#ask-the-bot) · [Early rising](#courts-rising-early) · [All commands](#all-commands)
+· [Ask the bot](#ask-the-bot) · [Court notices](#court-notices-who-is-not-sitting-who-takes-their-matters) · [Early rising](#courts-rising-early) · [All commands](#all-commands)
 · [Feature checklist](#feature-checklist) · [Questions](#questions) · [About the firm](#about-patras-law-chambers)
 
 ---
@@ -31,7 +31,8 @@ What arrives on your phone in an ordinary court week, and the one thing you do y
 | Saturday / Sunday | Monday's report as soon as Monday's list is published (usually Saturday) | Nothing |
 | 8:30 – 10:00 AM | Reminders listing every matter today with its chance; loud alarm at 10:00 when one is likely | Nothing |
 | About 10:15 AM | The display board opens on your Mac by itself; the watcher loads today's matters | **Type the CAPTCHA** |
-| Court hours | 20, 10 and 5 items away, "your item is on", or "heading closed before your item" | Nothing |
+| From 10:30 AM | Court notices (not sitting, modified determination, assignment) that concern your courts | Nothing |
+| Court hours | 20, 10 and 5 items away, "your item is on", "heading closed before your item", and long-running matter updates in your likely courts | Nothing |
 | 5:00 PM | Day summary: how each of your courts moved, and what happened to each item | Nothing |
 | Any time | Ask about any court, judge, group or case; forward a bar notice and everything adjusts | Optional |
 
@@ -171,7 +172,18 @@ such as `29/09`, or `original side` / `jalpaiguri` to any question.
 | `courts` | All courts sitting, with judges and times |
 | `group 6 history`, `who took anticipatory bail before` | Which courts and judges took it, from when to when |
 | `justice a b ghosh history`, `changes` | What a judge took over time; roster changes in the latest list |
+| `notices`, `notices court 22`, `modified determination` | The High Court's sitting and determination notices (kept for good) |
 | a cause-list PDF | Your matters in it, with day plans |
+
+## Court notices (who is not sitting, who takes their matters)
+
+Every court day on which you have matters, from **10:30 AM** (and then every 10 minutes until 2 PM) the system reads
+the High Court's **"Assignment / Determination / Roster / Sitting"** notices: sitting notices, **modified
+determinations** and assignment of cases. It tells you **only about the notices that name one of your courts or its
+judge**, quoting the relevant line, for example *"the urgent matters from the list and determination of Justice X shall
+be taken up by Justice Y"*. This matters most when a judge is not sitting, or a Division Bench judge sits singly, and
+the matter goes to another Bench. Every notice read is **kept for good**, so you can ask about it later (`notices`,
+`notices court 22`, `modified determination`), and a determination in force for tomorrow is added to the nightly report.
 
 ## Courts rising early
 
@@ -251,6 +263,8 @@ tail -40 ~/.casemonitor/logs/tick.log                             # what the bac
 - Alerts at 20, 10 and 5 items away, "your item is on", and "heading closed before your item, probably not reached".
 - Board jumping past your item, and "already past when watching began", reported; planned moves not treated as skips.
 - Alerts when the board stops updating, asks for the CAPTCHA again, or a court is not on the board by 10:50.
+- **Long-running matters:** in courts where your item is likely today, a matter that runs over 10 minutes is
+  reported, again at 20, 30… minutes, and once more when it ends, with how long it ran and how far your item is.
 - Keeps the screen awake while the board is open; 30-day record of how courts moved; 5 PM summary.
 </details>
 
