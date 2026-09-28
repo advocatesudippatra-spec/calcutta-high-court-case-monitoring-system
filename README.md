@@ -30,7 +30,7 @@ What arrives on your phone in an ordinary court week, and the one thing you do y
 | 10:00 PM | Tomorrow's report: every matter with court, judge, item, heading, day plan, chance and reason, plus a table file. Buttons to add Original Side or Jalpaiguri | Tap a button if needed |
 | Saturday / Sunday | Monday's report as soon as Monday's list is published (usually Saturday) | Nothing |
 | 8:30 – 10:00 AM | Reminders listing every matter today with its chance; loud alarm at 10:00 when one is likely | Nothing |
-| About 10:15 AM | The display board opens on your Mac by itself; the watcher loads today's matters | **Type the CAPTCHA** |
+| About 10:15 AM | The display board opens on your Mac by itself and its CAPTCHA picture comes to your Telegram | **Reply with the characters** |
 | From 10:30 AM | Court notices (not sitting, modified determination, assignment) that concern your courts | Nothing |
 | Court hours | 20, 10 and 5 items away, "your item is on", "heading closed before your item", and long-running matter updates in your likely courts | Nothing |
 | 5:00 PM | Day summary: how each of your courts moved, and what happened to each item | Nothing |
@@ -123,7 +123,7 @@ the phone is silent, Android uses the free **ntfy** app and iPhone uses **Pushov
 | When | You do |
 |---|---|
 | 10:00 PM | Nothing. Tap *Original Side*, *Jalpaiguri* or *Both* under the question if you want those lists checked; the report follows within minutes |
-| About 10:15 AM | The display board opens on your Mac by itself. **Type the CAPTCHA** and click the page once. The watcher shows "Today's code loaded automatically" |
+| About 10:15 AM | The display board opens on your Mac by itself and its CAPTCHA picture comes to your Telegram. **Reply with the characters**; the watcher types them in and starts watching |
 | Court hours | Nothing. Your phone rings when your item is near or on. If the board stops updating or asks for the CAPTCHA again, you get a message |
 | Courts rise early | Forward the bar notice to your bot, or send a photo of it. Chances are recalculated and the watcher stops at the rising time |
 | On a MacBook | Keep the lid open and the charger in; Court Mode keeps it awake until 4:45 PM (send `/courton`) |
@@ -174,6 +174,15 @@ such as `29/09`, or `original side` / `jalpaiguri` to any question.
 | `justice a b ghosh history`, `changes` | What a judge took over time; roster changes in the latest list |
 | `notices`, `notices court 22`, `modified determination` | The High Court's sitting and determination notices (kept for good) |
 | a cause-list PDF | Your matters in it, with day plans |
+
+## The board opens by itself at 10:15, and its CAPTCHA comes to your phone
+
+On court days with your matters, the main Mac opens the display board by itself at **10:15 AM**. The Board Watcher
+takes the CAPTCHA picture from the page and the bot sends it to you on **Telegram**. **Reply with the characters** you
+see; the watcher types them in, clicks *Validate CAPTCHA*, loads today's matters and starts watching. If the answer is
+not accepted, or the board asks again later in the day, a new picture comes the same way. You always read the CAPTCHA
+yourself; the program only carries the picture to your phone and your reply back to the board. (You can still type it
+on the Mac instead.)
 
 ## Court notices (who is not sitting, who takes their matters)
 

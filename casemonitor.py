@@ -709,6 +709,9 @@ def handle_update(u, tg, state, cfg, out, now):
         out(read_sent_pdf(tg, cfg, doc, path), silent=True)
         return
     cmd = text.split()[0].lower() if text else ""
+    if captcha_reply(text):
+        out("⌨️ Typing <code>%s</code> into the board…" % _e(text), silent=True)
+        return
     if cmd == "/rise" or re.match(r"(?i)^(cancel|undo) (the )?notice", text):
         d = dstr(now.date())
         rest = " ".join(text.split()[1:]).strip() if cmd == "/rise" else "cancel"
@@ -1195,6 +1198,8 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
 # ------------------------------------------------------------------ always-on listener
 BRIDGE_PORT = 8766
 RISE = {}  # today's notices, kept fresh by the listener loop for the board watcher
+CAPTCHA = {"id": None, "answer": None, "ts": 0}  # board CAPTCHA waiting for your reply on Telegram
+TG = [None]
 CFG = {}
 _WATCH = {}  # today's board watcher code, worked out at most every 30 minutes
 
@@ -1224,6 +1229,19 @@ def start_bridge():
 
     class H(BaseHTTPRequestHandler):
         def do_POST(self):
+            if self.path.startswith("/captcha"):
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    data = json.loads(self.rfile.read(n).decode() or "{}")
+                    relay_captcha(data)
+                    body, code = b'{"ok": true}', 200
+                except Exception as ex:
+                    body, code = json.dumps({"ok": False, "error": str(ex)[:200]}).encode(), 400
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 data = json.loads(self.rfile.read(n).decode() or "{}")
@@ -1260,6 +1278,16 @@ def start_bridge():
                 self.end_headers()
                 self.wfile.write(body)
                 return
+            if self.path.startswith("/captcha-answer"):
+                cid = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("id", [""])[0]
+                ans = CAPTCHA["answer"] if CAPTCHA["id"] == cid else None
+                if ans:
+                    CAPTCHA.update({"answer": None, "id": None})
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"answer": ans}).encode())
+                return
             if self.path.startswith("/watch"):
                 try:
                     code = todays_watch_code()
@@ -1284,6 +1312,30 @@ def start_bridge():
     return srv
 
 
+def relay_captcha(data):
+    """The board page asks for its CAPTCHA: send the picture to your Telegram; your reply is typed in by the watcher."""
+    import base64
+    tg = TG[0]
+    img = data.get("img", "")
+    if not tg or not img.startswith("data:image"):
+        raise RuntimeError("no Telegram or no picture")
+    raw = base64.b64decode(img.split(",", 1)[1])
+    CAPTCHA.update({"id": str(data.get("id") or int(time.time())), "answer": None, "ts": time.time()})
+    note = " (the last answer was not accepted)" if data.get("retry") else ""
+    tg.call("sendPhoto", {"chat_id": tg.chat, "caption": "🔐 Display board CAPTCHA%s. Reply with the characters you see, "
+                          "and I will type them in and start watching." % note}, files={"photo": ("captcha.png", raw)})
+
+
+def captcha_reply(text):
+    """Your Telegram reply while a board CAPTCHA is waiting (within 15 minutes)."""
+    t = (text or "").strip()
+    if CAPTCHA["id"] and time.time() - CAPTCHA["ts"] < 15 * 60 and re.fullmatch(r"[A-Za-z0-9]{4,7}", t) \
+            and t.lower() not in ("board", "court", "group", "help", "start", "stop", "status", "fixed"):
+        CAPTCHA["answer"] = t
+        return True
+    return False
+
+
 def listen(cfg, tg):
     """Answer Telegram messages within seconds, and receive the board from the watcher.
     Runs on one Mac (LISTENER=1 in config.env); launchd restarts it if it stops, and it
@@ -1292,6 +1344,7 @@ def listen(cfg, tg):
         print("Telegram is not connected on this Mac (run setup-telegram first).")
         sys.exit(1)
     CFG.update(cfg)
+    TG[0] = tg
     try:
         start_bridge()
     except OSError as ex:
@@ -1400,11 +1453,12 @@ def telegram_from(cfg):
 
 
 def auto_open_board(cfg, now):
-    """On the main Mac, open the display board by itself at about 10:15 on a court day with your matters."""
+    """On the main Mac, open the display board by itself from 10:15 on a court day with your matters; the watcher then
+    sends its CAPTCHA to your phone."""
     if cfg.get("AUTO_OPEN_BOARD") != "1" or cfg.get("LISTENER") != "1" or now.weekday() >= 5:
         return
     hm = now.hour * 60 + now.minute
-    if not (10 * 60 + 10 <= hm < 11 * 60 + 30):
+    if not (10 * 60 + 15 <= hm < 11 * 60 + 30):
         return
     stamp = os.path.join(HOME, ".board_opened_%s" % dstr(now.date()))
     if os.path.exists(stamp):

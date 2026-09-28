@@ -142,7 +142,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
   <p class="lede">You enter your name once. Every night the system finds your matters in the Calcutta High Court cause lists and tells you on Telegram which court, which item, under which heading, and how likely each matter is to be reached. During court hours it watches the live display board and rings your phone when your item is near, when it is on, or when its heading closes before your item. At any time you can ask it about any court, any judge, any group of matters or any case, and forward it a bar notice when the courts rise early.</p>
 </header>
 <nav class="toc" aria-label="Sections">
-  <a href="#day">Your day</a><a href="#how">How it works</a><a href="#setup">Set up</a><a href="#phone">Phone</a><a href="#routine">Daily routine</a><a href="#likely">How "likely" works</a><a href="#ask">Ask the bot</a><a href="#notices-board">Court notices</a><a href="#notices">Early rising</a><a href="#commands">All commands</a><a href="#features">Feature checklist</a><a href="#faq">Questions</a><a href="#about">About</a>
+  <a href="#day">Your day</a><a href="#how">How it works</a><a href="#setup">Set up</a><a href="#phone">Phone</a><a href="#routine">Daily routine</a><a href="#likely">How "likely" works</a><a href="#ask">Ask the bot</a><a href="#captcha-phone">CAPTCHA on phone</a><a href="#notices-board">Court notices</a><a href="#notices">Early rising</a><a href="#commands">All commands</a><a href="#features">Feature checklist</a><a href="#faq">Questions</a><a href="#about">About</a>
 </nav>
 
 <h2 id="day"><span class="n">01</span>Your day with it</h2>
@@ -152,7 +152,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
   <section><span class="when">10:00 PM</span><strong>Tomorrow's report</strong><span>Every matter with its court, judge, item, heading, day plan, chance and reason, plus a table file. Buttons to add Original Side or Jalpaiguri.</span><span class="you none">Tap a button if needed</span></section>
   <section><span class="when">Saturday / Sunday</span><strong>Monday's report</strong><span>Sent as soon as Monday's list is published, usually on Saturday.</span><span class="you none">You do nothing</span></section>
   <section><span class="when">8:30 – 10:00 AM</span><strong>Reminders</strong><span>Every matter today with its chance; loud alarm at 10:00 when one is likely.</span><span class="you none">You do nothing</span></section>
-  <section><span class="when">About 10:15 AM</span><strong>Board opens</strong><span>The display board opens on your Mac by itself and the watcher loads today's matters.</span><span class="you">You type the CAPTCHA</span></section>
+  <section><span class="when">About 10:15 AM</span><strong>Board opens</strong><span>The display board opens on your Mac by itself and its CAPTCHA picture comes to your Telegram.</span><span class="you">You reply with the CAPTCHA</span></section>
   <section><span class="when">Court hours</span><strong>Live alerts</strong><span>20, 10 and 5 items away, "your item is on", or "heading closed before your item".</span><span class="you none">You do nothing</span></section>
   <section><span class="when">5:00 PM</span><strong>Day summary</strong><span>How each of your courts moved, and what happened to each of your items.</span><span class="you none">You do nothing</span></section>
   <section><span class="when">Any time</span><strong>Ask or forward</strong><span>Ask about any court, judge, group or case. Forward a bar notice and everything adjusts.</span><span class="you none">Optional</span></section>
@@ -298,7 +298,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <div class="tbl"><table>
 <tr><th>When</th><th>You do</th></tr>
 <tr><td>10:00 PM</td><td>Nothing. Tap <i>Original Side</i>, <i>Jalpaiguri</i> or <i>Both</i> under the question if you want those lists checked too; the report follows within minutes.</td></tr>
-<tr><td>About 10:15 AM</td><td>The display board opens on your Mac by itself. <b>Type the CAPTCHA</b> and click the page once. The watcher shows "Today's matters loaded" and starts.</td></tr>
+<tr><td>About 10:15 AM</td><td>The display board opens on your Mac by itself and its CAPTCHA picture comes to your Telegram. <b>Reply with the characters</b>; the watcher types them in. The watcher shows "Today's matters loaded" and starts.</td></tr>
 <tr><td>Court hours</td><td>Nothing. Your phone rings when your item is near or on. If the board stops updating or asks for the CAPTCHA again, you get a message.</td></tr>
 <tr><td>Courts rise early</td><td>Forward the bar notice to your bot, or send a photo of it. Chances are recalculated and the watcher stops at the rising time.</td></tr>
 <tr><td>On a MacBook</td><td>Keep the lid open and the charger in; Court Mode keeps it awake until 4:45 PM (send <code>/courton</code>).</td></tr>
@@ -332,13 +332,16 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 </div>
 <p style="font-size:14px;color:var(--muted)">Replies above are examples of the format, not real data.</p>
 
-<h2 id="notices-board"><span class="n">08</span>Court notices: who is not sitting, who takes their matters</h2>
+<h2 id="captcha-phone"><span class="n">08</span>The board opens by itself at 10:15, and its CAPTCHA comes to your phone</h2>
+<p>On court days with your matters, the main Mac opens the display board by itself at <b>10:15 AM</b>. The Board Watcher takes the CAPTCHA picture from the page and the bot sends it to you on <b>Telegram</b>. <b>Reply with the characters</b> you see; the watcher types them in, clicks <i>Validate CAPTCHA</i>, loads today's matters and starts watching. If the answer is not accepted, or the board asks again later in the day, a new picture comes the same way. You always read the CAPTCHA yourself; the program only carries the picture to your phone and your reply back to the board. You can still type it on the Mac instead.</p>
+
+<h2 id="notices-board"><span class="n">09</span>Court notices: who is not sitting, who takes their matters</h2>
 <p>Every court day on which you have matters, from <b>10:30 AM</b> (and then every 10 minutes until 2 PM) the system reads the High Court's <b>"Assignment / Determination / Roster / Sitting"</b> notices: sitting notices, <b>modified determinations</b> and assignment of cases. It tells you <b>only about the notices that name one of your courts or its judge</b>, quoting the relevant line, for example <i>"the urgent matters from the list and determination of Justice X shall be taken up by Justice Y"</i>. This matters most when a judge is not sitting, or a Division Bench judge sits singly, and the matter goes to another Bench. Every notice read is kept for good, so you can ask about it later (<code>notices</code>, <code>notices court 22</code>, <code>modified determination</code>), and a determination in force for tomorrow is added to the nightly report.</p>
 
-<h2 id="notices"><span class="n">09</span>Courts rising early</h2>
+<h2 id="notices"><span class="n">10</span>Courts rising early</h2>
 <p>When a condolence resolution or other notice says the courts will rise early or not work, tell your bot by forwarding the message, pasting its text, sending a photo or PDF of it (the Mac reads the text in the picture), or typing <code>/rise 3:30 pm</code>. The bot confirms, recalculates today's chances, and the watcher stops at that time instead of reporting that the board is not updating. "Abstain from work tomorrow" turns off that day's reminders and alerts. Even without a notice, a board that stops changing after 3:15 PM is treated as the courts having risen. To have the bot read notices posted in a Telegram group, add your bot to the group and send <code>/watchgroup</code> there yourself.</p>
 
-<h2 id="commands"><span class="n">10</span>All commands</h2>
+<h2 id="commands"><span class="n">11</span>All commands</h2>
 <h3>Send these to your bot in Telegram</h3>
 <div class="tbl"><table>
 <tr><th>Send</th><th>What it does</th></tr>
@@ -380,7 +383,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 <div class="cmd"><pre>~/CaseMonitoringSystem/uninstall.sh</pre><button class="copy" type="button">Copy</button></div>
 <p>Remove the background schedule from this Mac (your settings and history stay unless you delete <code>~/.casemonitor</code>).</p>
 
-<h2 id="features"><span class="n">11</span>Feature checklist</h2>
+<h2 id="features"><span class="n">12</span>Feature checklist</h2>
 <p>Everything the current system does is carried into the general version.</p>
 <div class="feat">
 <section><h3>Reads the cause lists</h3><ul>
@@ -444,7 +447,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 </ul></section>
 </div>
 
-<h2 id="faq"><span class="n">12</span>Questions</h2>
+<h2 id="faq"><span class="n">13</span>Questions</h2>
 <h3>Do I need a Mac?</h3>
 <p>Yes. The program and the Board Watcher run on a Mac that is on during court hours. A Mac mini works best because it never sleeps; a MacBook works with Court Mode and the lid open.</p>
 <h3>Will other users see my matters?</h3>

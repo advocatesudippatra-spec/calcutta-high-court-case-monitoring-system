@@ -473,6 +473,14 @@ def parse_timetable(notes, headings, sit, list_date="", weekday="", side="A"):
             if pt and re.search(r"\b(AFTER|FROM|AT)\s+<T", ph):
                 p_start = int(re.search(r"\b(?:AFTER|FROM|AT)\s+<T(\d+)>", ph).group(1))
             p_start = p_start if p_start is not None else sit
+            if own_re.search(ph) and other_re.search(ph) and re.search(r"COMPLETION|EXHAUST|AFTER THE", ph):
+                # 'appellate side matters after completion of original side matters or after recess,
+                # whichever is earlier': this list starts by that time at the latest
+                tm = [int(x) for x in T_TOK.findall(body)]
+                if tm and max(tm) > sit:
+                    res["list_start"] = max(tm) if res["list_start"] is None else min(res["list_start"], max(tm))
+                matched = True
+                continue
             if own_re.search(ph) and not other_re.search(ph):
                 if re.search(r"\b(TILL|UPTO|UP TO|UNTIL|TO)\s+<T", ph):   # 'appellate side matters till recess'
                     end = int(re.search(r"\b(?:TILL|UPTO|UP TO|UNTIL|TO)\s+<T(\d+)>", ph).group(1))

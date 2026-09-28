@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calcutta HC Board Watcher (Case Monitor)
 // @namespace    casemonitor
-// @version      3.1
+// @version      3.2
 // @description  Watches the official Calcutta HC display board (after YOU enter the CAPTCHA), knows each court's day plan, and pushes phone alerts when your item is near, on, or when its heading closes before your item.
 // @match        https://display.calcuttahighcourt.gov.in/principal.php*
 // @match        https://display.calcuttahighcourt.gov.in/jalpaiguri.php*
@@ -31,6 +31,8 @@
  *   matters at their time) is not treated as a skip.
  * - In courts where your item is likely today, a matter running over 10 minutes is reported, again at 20, 30...
  *   minutes, and once more (with its length) when it ends.
+ * - When the page asks for its CAPTCHA (e.g. after the board opens by itself at 10:15), the picture is sent to your
+ *   Telegram; you reply with the characters and the watcher types them in. You always read the CAPTCHA yourself.
  * - It keeps a small record of how each court moved (only the changes, 30 days)
  *   and sends a summary at 5 PM.
  * - When courts rise early (a bar resolution / notice sent to the bot), or the board stops
@@ -329,6 +331,30 @@
     return mins >= 10 ? ` · on for ${mins} min` : '';
   }
 
+  // ------------------------------------------------------------ CAPTCHA to your phone (you read it; the watcher types your reply)
+  let capSentFor = '', capId = '', capPolls = 0, capTries = 0;
+  function relayCaptcha() {
+    const img = document.querySelector('#captcha_image img');
+    const box = document.querySelector('#captcha_div input[type="text"], #captcha_div input:not([type])');
+    const btn = document.querySelector('#validate_captcha');
+    if (!img || !box || !btn || !img.complete || !img.naturalWidth) return;
+    const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    let data = '';
+    try { cv.getContext('2d').drawImage(img, 0, 0); data = cv.toDataURL('image/png'); } catch (e) { return; }
+    if (data !== capSentFor) {   // a new CAPTCHA picture: send it once
+      capSentFor = data; capId = String(Date.now()); capPolls = 0; capTries += 1;
+      GM_xmlhttpRequest({ method: 'POST', url: 'http://127.0.0.1:8766/captcha', headers: { 'Content-Type': 'application/json' },
+        data: JSON.stringify({ id: capId, img: data, retry: capTries > 1 }) });
+      log('CAPTCHA sent to your phone');
+      return;
+    }
+    if (++capPolls > 180) return;  // stop asking after about 15 minutes
+    GM_xmlhttpRequest({ method: 'GET', url: 'http://127.0.0.1:8766/captcha-answer?id=' + capId, timeout: 8000,
+      onload: r => { try { const a = JSON.parse(r.responseText).answer;
+        if (a) { box.value = a; box.dispatchEvent(new Event('input', { bubbles: true })); log('CAPTCHA typed from your reply'); btn.click(); }
+      } catch (e) {} } });
+  }
+
   // ------------------------------------------------------------ main check
   let lastFetched = '', lastFetchedChange = Date.now(), captchaSince = 0;
   const LATE_FREEZE = 15 * 60 + 15;       // a board frozen after this time = courts have risen
@@ -346,6 +372,7 @@
       document.querySelector('#captcha_div').offsetParent !== null;
     if (captchaVisible) {
       captchaSince = captchaSince || Date.now();
+      if (now >= 10 * 60 + 10 && now <= 16 * 60 + 30 && new Date().getDay() % 6 !== 0) relayCaptcha();
       if (courtHours(now) && Date.now() - captchaSince > 2 * 60e3) {
         once('captcha_' + Math.floor(Date.now() / 36e5), () => push('Board needs the CAPTCHA', 'The display board is waiting for the CAPTCHA, so nothing is being watched. Type it on the Mac.', 4));
       }
@@ -425,7 +452,7 @@
   panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;width:360px;background:#fff;color:#111;' +
     'border:2px solid #4f378a;border-radius:10px;padding:10px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25)';
   panel.innerHTML = `
-    <b>Board Watcher 3.1</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
+    <b>Board Watcher 3.2</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
     <div id=hcw-body>
       <pre id=hcw-status style="white-space:pre-wrap;background:#f4f1fa;padding:6px;border-radius:6px;max-height:180px;overflow:auto"></pre>
       <label><b>Paste code here</b> (the board watcher code from Telegram, or the settings code)</label>
@@ -500,5 +527,6 @@
   keepScreenOn();
   pruneHistory();
   setInterval(check, CHECK_EVERY_MS);
+  setInterval(() => { const cv = document.querySelector('#captcha_div'); if (cv && cv.offsetParent !== null) check(); }, 5000);
   check();
 })();
