@@ -15,7 +15,7 @@ if ! /usr/bin/python3 -c "import sys" 2>/dev/null; then
 fi
 
 mkdir -p "$APP" "$HOME_DIR/logs" "$HOME_DIR/reports" "$HOME_DIR/cache" "$HOME_DIR/monthly" "$HOME_DIR/bin"
-cp "$REPO"/causelist.py "$REPO"/casemonitor.py "$REPO"/roster.py "$REPO"/court_mode.sh "$REPO"/watcher.user.js "$REPO"/requirements.txt "$APP"/
+cp "$REPO"/causelist.py "$REPO"/casemonitor.py "$REPO"/roster.py "$REPO"/ai.py "$REPO"/court_mode.sh "$REPO"/watcher.user.js "$REPO"/requirements.txt "$APP"/
 echo "$REPO" > "$HOME_DIR/repo_path"
 
 if [ ! -x "$HOME_DIR/venv/bin/python" ]; then
@@ -50,7 +50,7 @@ REPO="$(cat "$H/repo_path" 2>/dev/null)"
 STAMP="$H/.updated_$(date +%Y%m%d)"
 if [ -n "$REPO" ] && [ -d "$REPO/.git" ] && [ ! -f "$STAMP" ]; then
   if git -C "$REPO" pull --ff-only -q 2>>"$H/logs/update.log"; then
-    cp "$REPO"/causelist.py "$REPO"/casemonitor.py "$REPO"/roster.py "$REPO"/court_mode.sh "$REPO"/watcher.user.js "$H/app/" 2>>"$H/logs/update.log" && touch "$STAMP"
+    cp "$REPO"/causelist.py "$REPO"/casemonitor.py "$REPO"/roster.py "$REPO"/ai.py "$REPO"/court_mode.sh "$REPO"/watcher.user.js "$H/app/" 2>>"$H/logs/update.log" && touch "$STAMP"
     if [ -f "$REPO/ocr.swift" ] && [ "$REPO/ocr.swift" -nt "$H/bin/ocr" ]; then swiftc -O "$REPO/ocr.swift" -o "$H/bin/ocr" 2>>"$H/logs/update.log"; fi
     rm -f $(ls "$H"/.updated_* 2>/dev/null | grep -v "$STAMP") 2>/dev/null
   fi

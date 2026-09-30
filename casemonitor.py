@@ -70,6 +70,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import causelist as cl  # noqa: E402
 import roster  # noqa: E402
+import ai  # noqa: E402
 
 HOME = os.environ.get("CASEMONITOR_HOME") or os.path.expanduser("~/.casemonitor")
 CONFIG = os.path.join(HOME, "config.env")
@@ -804,11 +805,81 @@ def handle_update(u, tg, state, cfg, out, now):
         r = subprocess.run([os.path.join(HERE, "court_mode.sh")] + args, capture_output=True, text=True)
         out("%s: %s" % (cfg["DEVICE_NAME"], (r.stdout or r.stderr).strip().splitlines()[0]))
     elif text:
-        try:
-            reply = roster.answer(text, cfg["names"])
-        except Exception as ex:
-            reply = "Sorry, I could not answer that (%s). Send /help for examples." % _e(repr(ex)[:120])
+        reply = None
+        if ai.available(cfg):
+            try:
+                reply = _e(ai.ask(text, cfg, ai_context(cfg, state, now), chat=str((msg.get("chat") or {}).get("id")), now=now))
+            except Exception as ex:
+                print("AI failed, using keyword answers:", ex)
+        if reply is None:
+            try:
+                reply = roster.answer(text, cfg["names"])
+            except Exception as ex:
+                reply = "Sorry, I could not answer that (%s). Send /help for examples." % _e(repr(ex)[:120])
         out(reply, silent=True)
+
+
+def ai_context(cfg, state, now):
+    """What the AI assistant may do: read your matters, follow a court, set reminders."""
+    def my_matters(date):
+        d = date if re.fullmatch(r"\d{8}", date or "") else (dstr(now.date()) if now.hour < 17 and now.weekday() < 5
+                                                               else dstr(list_day_for(now)))
+        pub, rows = analyse_day(cfg, d)
+        if not pub:
+            return "The list for %s is not published yet." % pretty(d)
+        if not rows:
+            return "No matter of %s in the list for %s." % (", ".join(cfg["names"]), pretty(d))
+        return "\n".join("%s: Court %s (%s), %s, %s, heading %s: %s%s. Why: %s" % (
+            pretty(d), r["court_no"], r["judges"], r["position"], r["case_no"], r["section"], r["level"],
+            (" around " + r["eta"]) if r["eta"] else "", r["comment"][:300]) for r in rows)
+
+    def follow(court):
+        if not re.fullmatch(r"\d{1,3}", court or ""):
+            return "Give a court number."
+        d = dstr(now.date())
+        until = None
+        try:
+            _, rows = analyse_day(cfg, d)
+            mine = sorted(r["serial"] for r in rows if r["side"] == "A" and r["court_no"] == court and r["kind"] != "monthly-link")
+            until = mine[0] if mine else None
+        except Exception:
+            pass
+        state.data.setdefault("follow", {})[court] = {"until": until, "date": d}
+        state.save()
+        return "Following Court %s%s (the board must be open)." % (court, (" until item %s" % until) if until else " today")
+
+    def unfollow(court):
+        fl = state.data.setdefault("follow", {})
+        for c_ in ([court] if court else list(fl)):
+            fl.pop(c_, None)
+        state.save()
+        return "Stopped following %s." % (("Court " + court) if court else "all courts")
+
+    def remind(tm, date, text):
+        try:
+            h, m = [int(x) for x in tm.split(":")[:2]]
+            day = ddate(date) if re.fullmatch(r"\d{8}", date or "") else now.date()
+            at = dt.datetime(day.year, day.month, day.day, h, m, tzinfo=IST)
+        except Exception:
+            return "Time must look like 21:00."
+        if at < now:
+            at += dt.timedelta(days=1)
+        state.data.setdefault("rem", []).append({"at": int(at.timestamp()), "text": text[:300]})
+        state.save()
+        return "Reminder set for %s." % at.strftime("%d-%m %I:%M %p")
+
+    return {"names": cfg["names"], "my_matters": my_matters, "follow": follow, "unfollow": unfollow, "remind": remind}
+
+
+def send_reminders(state, out, now, dry=False):
+    due = [r for r in state.data.get("rem", []) if r.get("at", 0) <= now.timestamp()]
+    if not due:
+        return
+    for r in due:
+        out("⏰ <b>Reminder</b>\n%s" % _e(r.get("text", "")))
+    if not dry:
+        state.data["rem"] = [r for r in state.data.get("rem", []) if r not in due]
+        state.save()
 
 
 def read_sent_pdf(tg, cfg, doc, path):
@@ -1295,6 +1366,10 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
         notice_board(cfg, state, out, now, dry)
     except Exception as ex:
         log("notice board failed: %r" % ex)
+    try:
+        send_reminders(state, out, now, dry)
+    except Exception as ex:
+        log("reminders failed: %r" % ex)
 
     # extra sides you asked for (Original Side / Jalpaiguri): report as soon as each is published
     for d, picked in list(state.data["xs"].items()):
@@ -1504,7 +1579,7 @@ def listen(cfg, tg):
         start_bridge()
     except OSError as ex:
         print("bridge not started (%s); board questions will use whatever another listener saved" % ex)
-    files = [os.path.join(HERE, f) for f in ("casemonitor.py", "causelist.py", "roster.py")]
+    files = [os.path.join(HERE, f) for f in ("casemonitor.py", "causelist.py", "roster.py", "ai.py")]
     stamp = [os.path.getmtime(f) for f in files if os.path.exists(f)]
     dev, last_hb = cfg["DEVICE_NAME"], 0
 
@@ -1777,6 +1852,12 @@ def main():
     b.add_argument("--from", dest="start", required=True, help="DDMMYYYY")
     b.add_argument("--to", dest="end", help="DDMMYYYY (default: today)")
     b.add_argument("--sides", default="A", help="e.g. A or A,O,J")
+    ak = sub.add_parser("ai-key", help="save an AI provider's API key in the Keychain")
+    ak.add_argument("provider", choices=sorted(ai.PROVIDERS))
+    apv = sub.add_parser("ai-provider", help="choose which AI answers (moonshot, deepseek, openai, gemini, claude)")
+    apv.add_argument("provider", choices=sorted(ai.PROVIDERS))
+    aa = sub.add_parser("ai", help="ask the AI assistant a question here")
+    aa.add_argument("question", nargs="+")
     sp = sub.add_parser("schedule", help="show or change the day's times")
     sp.add_argument("key", nargs="?", help="e.g. MORNING_TIMES")
     sp.add_argument("value", nargs="?", help="e.g. 08:30,09:15,10:00")
@@ -1851,6 +1932,21 @@ def main():
         print("Recent jobs:", json.dumps(st.data.get("sent", {}), indent=1))
     elif a.cmd == "backfill":
         backfill(cfg, ddate(a.start), ddate(a.end) if a.end else now_ist().date(), _sides(a.sides) or ["A"])
+    elif a.cmd == "ai-key":
+        import getpass
+        key = getpass.getpass("Paste the %s API key (it will not show), then press Enter: " % a.provider).strip()
+        if not key:
+            print("Nothing saved.")
+        else:
+            ai.set_key(a.provider, key)
+            print("Saved in the Keychain for %s.%s" % (a.provider, "" if ai.provider_of(cfg) == a.provider else
+                                                      "  (Currently answering: %s. Switch with: calllist ai-provider %s)" % (ai.provider_of(cfg), a.provider)))
+    elif a.cmd == "ai-provider":
+        set_config("AI_PROVIDER", a.provider)
+        print("AI provider: %s%s" % (a.provider, "" if ai.get_key(a.provider) else "   (no key yet: calllist ai-key %s)" % a.provider))
+    elif a.cmd == "ai":
+        st = State(tg).load() if tg else State(None)
+        print(ai.ask(" ".join(a.question), cfg, ai_context(cfg, st, now_ist()), chat="terminal"))
     elif a.cmd == "schedule":
         if a.key and a.value:
             k = a.key.upper()
