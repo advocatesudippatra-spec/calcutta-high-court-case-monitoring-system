@@ -1744,6 +1744,13 @@ def main():
     b.add_argument("--from", dest="start", required=True, help="DDMMYYYY")
     b.add_argument("--to", dest="end", help="DDMMYYYY (default: today)")
     b.add_argument("--sides", default="A", help="e.g. A or A,O,J")
+    dd = sub.add_parser("data", help="database: show sizes, or trim by date and type")
+    dd.add_argument("action", choices=["stats", "trim", "folder"])
+    dd.add_argument("--from", dest="dfrom", help="DDMMYYYY (start of the range to delete)")
+    dd.add_argument("--to", dest="dto", help="DDMMYYYY (end of the range to delete)")
+    dd.add_argument("--keep-from", dest="keep", help="DDMMYYYY: delete everything before this date")
+    dd.add_argument("--what", default="lists,board,notices,ai", help="lists, board, notices, ai (comma separated)")
+    dd.add_argument("--no-backup", action="store_true")
     f = sub.add_parser("forget-database")
     f.add_argument("--before", help="DDMMYYYY: delete only lists before this date")
     q = sub.add_parser("ask")
@@ -1808,6 +1815,35 @@ def main():
         print("Recent jobs:", json.dumps(st.data.get("sent", {}), indent=1))
     elif a.cmd == "backfill":
         backfill(cfg, ddate(a.start), ddate(a.end) if a.end else now_ist().date(), _sides(a.sides) or ["A"])
+    elif a.cmd == "data":
+        if a.action == "folder":
+            print(roster.DATA_DIR)
+            subprocess.run(["open", roster.DATA_DIR])
+        elif a.action == "stats":
+            st_ = roster.data_stats()
+            print("Database folder:", st_["folder"], "| file: %s MB" % st_["file_mb"])
+            for k, label in roster.DATA_KINDS.items():
+                v = st_[k]
+                rng = ("%s to %s" % (pretty(v["from"][6:] + v["from"][4:6] + v["from"][:4]),
+                                     pretty(v["to"][6:] + v["to"][4:6] + v["to"][:4]))) if v.get("from") else "-"
+                print("  %-40s %6s rows   %s" % (label, v["rows"], rng))
+        else:
+            kinds = [k.strip() for k in a.what.split(",") if k.strip() in roster.DATA_KINDS]
+            start = ymd(a.dfrom) if a.dfrom else None
+            end = ymd(a.dto) if a.dto else None
+            if a.keep:
+                start, end = None, (ddate(a.keep) - dt.timedelta(days=1)).strftime("%Y%m%d")
+            if not (start or end):
+                print("Give --keep-from DDMMYYYY, or --from/--to.")
+                sys.exit(1)
+            what = ", ".join(roster.DATA_KINDS[k] for k in kinds)
+            rng = "before %s" % pretty(a.keep) if a.keep else "from %s to %s" % (pretty(a.dfrom) if a.dfrom else "the start",
+                                                                                 pretty(a.dto) if a.dto else "today")
+            if input("Delete %s %s? A backup is made first. Type DELETE to confirm: " % (what, rng)).strip() != "DELETE":
+                print("Nothing deleted.")
+            else:
+                done, bpath = roster.trim_data(kinds, start, end, backup=not a.no_backup)
+                print("Deleted:", done, "| backup:", bpath or "none")
     elif a.cmd == "forget-database":
         what = "lists before %s" % pretty(a.before) if a.before else "the WHOLE roster database (all stored lists and board history)"
         if input("This deletes %s. Type DELETE to confirm: " % what).strip() != "DELETE":

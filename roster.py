@@ -26,7 +26,28 @@ import fitz  # PyMuPDF
 import causelist as cl
 
 HOME = os.environ.get("CASEMONITOR_HOME") or os.path.expanduser("~/.casemonitor")
-DB = os.path.join(HOME, "roster.db")
+APP_NAME = "Calcutta High Court Case Monitor"
+_default_home = os.path.expanduser("~/.calllist") if os.path.basename(HOME) == ".calllist" else os.path.expanduser("~/.casemonitor")
+# the database lives in a folder you can see (Documents), unless a test/other home is in use
+DATA_DIR = os.environ.get("CASEMONITOR_DATA") or (
+    os.path.join(os.path.expanduser("~/Documents"), APP_NAME) if HOME == _default_home else HOME)
+DB = os.path.join(DATA_DIR, "roster.db")
+BACKUPS = os.path.join(DATA_DIR, "Backups")
+
+
+def _move_old_db():
+    """First run after the change: move the database from the hidden folder to Documents (a link stays behind)."""
+    old = os.path.join(HOME, "roster.db")
+    if DATA_DIR == HOME or os.path.islink(old):
+        return
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if os.path.exists(old) and not os.path.exists(DB):
+        os.replace(old, DB)
+    if not os.path.exists(old) and os.path.exists(DB):
+        try:
+            os.symlink(DB, old)
+        except OSError:
+            pass
 CACHE = os.path.join(HOME, "cache")
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X",
@@ -53,6 +74,8 @@ def pretty(d):
 # ------------------------------------------------------------------ database
 def db():
     os.makedirs(HOME, exist_ok=True)
+    _move_old_db()
+    os.makedirs(DATA_DIR, exist_ok=True)
     con = sqlite3.connect(DB, timeout=30)
     con.row_factory = sqlite3.Row
     con.executescript("""
@@ -67,6 +90,7 @@ def db():
     CREATE TABLE IF NOT EXISTS board(t REAL, side TEXT, court TEXT, serial TEXT, detail TEXT, daily INT,
         judges TEXT, fetched TEXT);
     CREATE INDEX IF NOT EXISTS board_c ON board(court, t);
+    CREATE TABLE IF NOT EXISTS ai_log(t REAL, source TEXT, provider TEXT, question TEXT, answer TEXT);
     CREATE TABLE IF NOT EXISTS notices(id INTEGER PRIMARY KEY, title TEXT, uploaded TEXT, kind TEXT, dates TEXT,
         courts TEXT, judges TEXT, url TEXT, text TEXT, fetched REAL);
     CREATE TABLE IF NOT EXISTS board_now(side TEXT, court TEXT, serial TEXT, detail TEXT, daily INT,
@@ -77,6 +101,83 @@ def db():
         con.execute("ALTER TABLE notices ADD COLUMN category TEXT DEFAULT 'roster'")
         con.commit()
     return con
+
+
+# ------------------------------------------------------------------ database: sizes and trimming by date and type
+DATA_KINDS = {
+    "lists": "cause lists (every court and item)",
+    "board": "display board history",
+    "notices": "High Court notices",
+    "ai": "AI questions and answers",
+}
+
+
+def _ymd_expr(col):
+    return "substr(%s,5,4)||substr(%s,3,2)||substr(%s,1,2)" % (col, col, col)
+
+
+def data_stats(con=None):
+    """Rows, date range and approximate size per kind of data."""
+    con = con or db()
+    out = {}
+    r = con.execute("SELECT COUNT(*) n, MIN(%s) a, MAX(%s) b FROM lists" % (_ymd_expr("date"), _ymd_expr("date"))).fetchone()
+    items = con.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+    out["lists"] = {"rows": r["n"], "items": items, "from": r["a"], "to": r["b"]}
+    r = con.execute("SELECT COUNT(*) n, MIN(t) a, MAX(t) b FROM board").fetchone()
+    out["board"] = {"rows": r["n"], "from": dt.datetime.fromtimestamp(r["a"]).strftime("%Y%m%d") if r["a"] else None,
+                    "to": dt.datetime.fromtimestamp(r["b"]).strftime("%Y%m%d") if r["b"] else None}
+    r = con.execute("SELECT COUNT(*) n, MIN(fetched) a, MAX(fetched) b FROM notices").fetchone()
+    out["notices"] = {"rows": r["n"], "from": dt.datetime.fromtimestamp(r["a"]).strftime("%Y%m%d") if r["a"] else None,
+                      "to": dt.datetime.fromtimestamp(r["b"]).strftime("%Y%m%d") if r["b"] else None}
+    r = con.execute("SELECT COUNT(*) n, MIN(t) a, MAX(t) b FROM ai_log").fetchone()
+    out["ai"] = {"rows": r["n"], "from": dt.datetime.fromtimestamp(r["a"]).strftime("%Y%m%d") if r["a"] else None,
+                 "to": dt.datetime.fromtimestamp(r["b"]).strftime("%Y%m%d") if r["b"] else None}
+    out["file_mb"] = round(os.path.getsize(DB) / 1e6, 1) if os.path.exists(DB) else 0
+    out["folder"] = DATA_DIR
+    return out
+
+
+def backup_db():
+    """Copy the database into Backups/ (kept: the last 10)."""
+    import shutil
+    import glob as _g
+    os.makedirs(BACKUPS, exist_ok=True)
+    dst = os.path.join(BACKUPS, "roster-%s.db" % now_ist().strftime("%Y%m%d-%H%M%S"))
+    src = sqlite3.connect(DB)
+    out = sqlite3.connect(dst)
+    src.backup(out)
+    out.close()
+    src.close()
+    for old in sorted(_g.glob(os.path.join(BACKUPS, "roster-*.db")))[:-10]:
+        os.remove(old)
+    del shutil
+    return dst
+
+
+def trim_data(kinds=("lists", "board", "notices", "ai"), start=None, end=None, backup=True):
+    """Delete data between two dates (YYYYMMDD, inclusive; either may be None = open-ended), per kind.
+    Returns {kind: rows deleted} and the backup path. 'Keep from 1 Jan 2026' = trim(end='20251231')."""
+    con = db()
+    bpath = backup_db() if backup else None
+    lo, hi = start or "00000000", end or "99999999"
+    t_lo = dt.datetime.strptime(lo, "%Y%m%d").timestamp() if start else 0
+    t_hi = (dt.datetime.strptime(hi, "%Y%m%d") + dt.timedelta(days=1)).timestamp() if end else 4e12
+    done = {}
+    if "lists" in kinds:
+        n = 0
+        for t in ("items", "courts", "lists"):
+            cur = con.execute("DELETE FROM %s WHERE %s BETWEEN ? AND ?" % (t, _ymd_expr("date")), (lo, hi))
+            n += cur.rowcount if t == "lists" else 0
+        done["lists"] = n
+    if "board" in kinds:
+        done["board"] = con.execute("DELETE FROM board WHERE t >= ? AND t < ?", (t_lo, t_hi)).rowcount
+    if "notices" in kinds:
+        done["notices"] = con.execute("DELETE FROM notices WHERE fetched >= ? AND fetched < ?", (t_lo, t_hi)).rowcount
+    if "ai" in kinds:
+        done["ai"] = con.execute("DELETE FROM ai_log WHERE t >= ? AND t < ?", (t_lo, t_hi)).rowcount
+    con.commit()
+    con.execute("VACUUM")
+    return done, bpath
 
 
 def forget(before=None):
