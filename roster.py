@@ -72,6 +72,10 @@ def db():
     CREATE TABLE IF NOT EXISTS board_now(side TEXT, court TEXT, serial TEXT, detail TEXT, daily INT,
         judges TEXT, fetched TEXT, t REAL, PRIMARY KEY(side, court));
     """)
+    cols = [r[1] for r in con.execute("PRAGMA table_info(notices)")]
+    if "category" not in cols:
+        con.execute("ALTER TABLE notices ADD COLUMN category TEXT DEFAULT 'roster'")
+        con.commit()
     return con
 
 
@@ -694,16 +698,34 @@ def _pdf_text(data, ocr=None):
     return txt
 
 
-def notice_pages(pages=1):
-    """[(id, title, uploaded, url)] from the High Court's 'Assignment / Determination / Roster / Sitting' notices."""
+NOTICE_ALL = "https://www.calcuttahighcourt.gov.in/Notices/All"
+# sections of the notice board worth a lawyer's attention (others are skipped: tenders, recruitment, ...)
+NOTICE_KEEP = ("roster", "general-notice", "PD", "Calendar", "CL", "ORDER", "ECOURT", "Link", "MC", "chc-lsc")
+ROUTINE_TITLE = r"^(DAILY\s+CAUSE\s*LIST|DAILY\s+CAUSELIST|MONTHLY\s+(COMBINED\s+)?(CAUSE\s*)?LIST|.*LIST OF DEFECTIVE|WARNING LIST)"
+
+
+def notice_category(url):
+    m = re.search(r"/Notice-Files/([^/]+)/\d+", url or "")
+    return m.group(1) if m else "roster"
+
+
+def is_holiday_notice(title, text=""):
+    t = (title + " " + (text or "")[:1500]).upper()
+    return bool(re.search(r"\bHOLIDAY|\bCOURTS?\s+(?:WILL|SHALL)\s+REMAIN\s+CLOSED|\bREMAIN\s+CLOSED\b|\bCLOSED\s+ON\b|"
+                          r"NO\s+(?:JUDICIAL\s+)?WORK|WILL\s+NOT\s+FUNCTION|SHALL\s+NOT\s+FUNCTION|DECLARED\s+AS\s+A?\s*HOLIDAY", t))
+
+
+def notice_pages(pages=1, source=None):
+    """[(id, title, uploaded, url)] from the High Court's notice board: the roster section (default) or All Notices."""
     import html as _h
     out = []
+    base = source or NOTICE_LIST
     for n in range(1, pages + 1):
-        url = NOTICE_LIST + ("?page=%d" % n if n > 1 else "")
+        url = base + ("?page=%d" % n if n > 1 else "")
         page = (_fetch_bytes(url) or b"").decode("utf-8", "ignore")
         for href, inner in re.findall(r'(?is)<a[^>]+class="[^"]*list-group-item[^"]*"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', page) + \
                 re.findall(r'(?is)<a[^>]+href="([^"]+)"[^>]*class="[^"]*list-group-item[^"]*"[^>]*>(.*?)</a>', page):
-            m = re.search(r"/roster/(\d+)", href)
+            m = re.search(r"/Notice-Files/[^/]+/(\d+)", href)
             if not m:
                 continue
             text = re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", inner))).strip()
@@ -718,23 +740,28 @@ def notice_pages(pages=1):
     return res
 
 
-def update_notices(pages=1, ocr=None, con=None):
-    """Store any new roster notices (text read from the PDF). Returns the new rows. Nothing is ever deleted."""
+def update_notices(pages=1, ocr=None, con=None, source=None):
+    """Store any new notices (text read from the PDF). Returns the new rows. Nothing is ever deleted automatically."""
     con = con or db()
     new = []
-    for nid, title, uploaded, url in notice_pages(pages):
+    for nid, title, uploaded, url in notice_pages(pages, source):
         if con.execute("SELECT 1 FROM notices WHERE id=?", (nid,)).fetchone():
             continue
+        cat = notice_category(url)
+        if cat not in NOTICE_KEEP or re.match(ROUTINE_TITLE, title.upper()):
+            continue  # tenders, recruitment, routine list uploads...
         try:
             text = _pdf_text(_fetch_bytes(url) or b"", ocr)
         except Exception as ex:
             print("notice %s not read: %s" % (nid, ex))
             text = ""
         both = title + "\n" + text
-        row = (nid, title, uploaded, _notice_kind(title), ",".join(_notice_dates(both)),
-               ",".join(_notice_courts(both)), "|".join(_notice_judges(both)), url, text, time.time())
-        con.execute("INSERT OR REPLACE INTO notices VALUES(?,?,?,?,?,?,?,?,?,?)", row)
-        new.append(dict(zip(("id", "title", "uploaded", "kind", "dates", "courts", "judges", "url", "text"), row[:9])))
+        kind = "holiday" if is_holiday_notice(title, text) else (_notice_kind(title) if cat == "roster" else cat)
+        row = (nid, title, uploaded, kind, ",".join(_notice_dates(both)),
+               ",".join(_notice_courts(both)), "|".join(_notice_judges(both)), url, text, time.time(), cat)
+        con.execute("INSERT OR REPLACE INTO notices(id,title,uploaded,kind,dates,courts,judges,url,text,fetched,category) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?)", row)
+        new.append(dict(zip(("id", "title", "uploaded", "kind", "dates", "courts", "judges", "url", "text", "fetched", "category"), row)))
     con.commit()
     return new
 
@@ -890,8 +917,10 @@ def answer(text, names=()):
     if re.search(r"\b(ROSTER )?CHANGES?\b|\bWHAT CHANGED\b", t) and not re.search(r"\bFIND\b", t):
         return done(ans_changes(con, side, ds))
 
-    if re.search(r"\bNOTICES?\b|\bMODIFIED DETERMINATIONS?\b|\bASSIGNMENT\b|\bNOT SITTING\b", t):
-        kind = "modified determination" if "DETERMINATION" in t else ("assignment of cases" if "ASSIGNMENT" in t else None)
+    if re.search(r"\bNOTICES?\b|\bMODIFIED DETERMINATIONS?\b|\bASSIGNMENT\b|\bNOT SITTING\b|\bHOLIDAYS?\b|\bCIRCULARS?\b|"
+                 r"\bPRACTICE DIRECTIONS?\b", t):
+        kind = ("modified determination" if "DETERMINATION" in t else "assignment of cases" if "ASSIGNMENT" in t else
+                "holiday" if "HOLIDAY" in t else "general-notice" if "CIRCULAR" in t else "PD" if "PRACTICE" in t else None)
         return done(ans_notices(con, ds, loose_court, kind))
     if re.search(r"\bMY (COURTS?|MATTERS?|ITEMS?|CASES?)\b|\bMINE\b", t) and names:
         who = names[0]

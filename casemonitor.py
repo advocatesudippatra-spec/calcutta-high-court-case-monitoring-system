@@ -961,6 +961,61 @@ def notice_text(n, why, header="📢 Notice affecting your matters"):
         header, _e(n["title"]), _e(n["uploaded"]), _e(", ".join(why)), _e(roster.notice_snippet(n, why[0])), _e(n["url"]))
 
 
+def notice_board(cfg, state, out, now, dry=False):
+    """Every 20 minutes from 8 AM to 9 PM: read the whole notice board. Holiday / closure notices are sent at once;
+    everything else worth knowing goes into one digest at DIGEST_TIME (default 6 PM)."""
+    hm = now.hour * 60 + now.minute
+    if not (8 * 60 <= hm < 21 * 60):
+        return
+    if time.time() - float(state.data.get("nb_last", 0)) < 19 * 60 and not dry:
+        return
+    state.data["nb_last"] = int(time.time())
+    con = roster.db()
+    d = dstr(now.date())
+    try:
+        new = roster.update_notices(pages=1, ocr=os.path.join(HOME, "bin", "ocr"), con=con, source=roster.NOTICE_ALL)
+    except Exception as ex:
+        print("notice board not read:", ex)
+        new = []
+    for n in new:
+        # a supplementary cause list (often one court at a time) that carries your name: tell you at once
+        if n["category"] == "CL" and cfg["names"] and cl.name_hit(n["text"] or "", cfg["names"]) \
+                and not state.done("nt:%s:%s" % (n["id"], d)):
+            out("🆕 <b>Your name is in a supplementary cause list</b>\n%s <i>(uploaded %s)</i>\n%s\n"
+                "Send <code>/now</code> for the full report with it." % (_e(n["title"]), _e(n["uploaded"]), _e(n["url"])))
+            if not dry:
+                state.data["sent"]["nt:%s:%s" % (n["id"], d)] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
+            continue
+        if n["kind"] == "holiday" and not state.done("nt:%s:%s" % (n["id"], d)):
+            out("📅 <b>Court holiday / closure notice</b>\n%s <i>(uploaded %s)</i>\n<i>%s</i>\n%s" % (
+                _e(n["title"]), _e(n["uploaded"]), _e(re.sub(r"\s+", " ", n["text"] or "")[:300]), _e(n["url"])))
+            if not dry:
+                state.data["sent"]["nt:%s:%s" % (n["id"], d)] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
+    dg = cfg.get("DIGEST_TIME", "18:00")
+    try:
+        dh, dm_ = [int(x) for x in dg.split(":")]
+    except ValueError:
+        dh, dm_ = 18, 0
+    if hm >= dh * 60 + dm_ and not state.done("dig:%s" % d):
+        since = time.time() - 24 * 3600
+        rows = [r for r in con.execute("SELECT * FROM notices WHERE fetched>? ORDER BY id", (since,)).fetchall()
+                if not state.done("nt:%s:%s" % (r["id"], d))]
+        if rows:
+            sup = [r for r in rows if re.match(r"(?i)SUPPLEMENTARY CAUSE LIST", r["title"] or "")]
+            rest = [r for r in rows if r not in sup]
+            lines = ["<b>🗞 Notice board today</b> (%d new)" % len(rows)]
+            for r in rest[:25]:
+                lines.append("• <b>%s</b> <i>(%s)</i>\n  %s" % (_e(r["title"]), _e(r["category"] or r["kind"]), _e(r["url"])))
+            if sup:
+                courts = sorted({m for r in sup for m in re.findall(r"COURT\s*NO\.?\s*(\d+)", (r["title"] or "").upper())}, key=int)
+                lines.append("• Supplementary cause lists for Courts %s (none has your name)" % ", ".join(courts or ["-"]))
+            out("\n".join(lines), silent=True)
+        if not dry:
+            state.data["sent"]["dig:%s" % d] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
+    if not dry:
+        state.save()
+
+
 def check_notices(cfg, state, out, now, dry=False):
     """10:30 AM to 2 PM on court days with your matters: read new roster notices (sitting changes, modified
     determinations, assignment of cases), keep them all, and tell you only about those naming your courts/judges."""
@@ -1204,6 +1259,10 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
         check_notices(cfg, state, out, now, dry)
     except Exception as ex:
         log("notice check failed: %r" % ex)
+    try:
+        notice_board(cfg, state, out, now, dry)
+    except Exception as ex:
+        log("notice board failed: %r" % ex)
 
     # extra sides you asked for (Original Side / Jalpaiguri): report as soon as each is published
     for d, picked in list(state.data["xs"].items()):
