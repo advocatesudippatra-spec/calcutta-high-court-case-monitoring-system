@@ -29,6 +29,8 @@ Commands (send to your bot on Telegram, from any phone or Mac):
   "mentioning 25", "fixed 35", "justice a b ghosh", "find 1234", "advocate x",
   "running 12", "board" (see /help)
   /courton [HH:MM]  keep the Mac awake for court   /courtoff  let it sleep again
+  follow 25         a message each time an item finishes in Court 25, until your item comes
+  stop following 25 end it (or 'stop following' for all)
   /rise 3:30 pm     courts rise early today (or forward/send the notice, even as a photo)
   /rise cancel      back to normal hours           /watchgroup  (sent by you inside a group) read notices there
 
@@ -285,6 +287,8 @@ class State(object):
             self.data["sent"].pop(k, None)
         self.data["xs"] = {d: v for d, v in self.data.get("xs", {}).items() if ymd(d) >= cutoff}
         self.data["rise"] = {d: v for d, v in (self.data.get("rise") or {}).items() if ymd(d) >= cutoff}
+        today = dt.datetime.now(IST).strftime("%d%m%Y")
+        self.data["follow"] = {c: v for c, v in (self.data.get("follow") or {}).items() if v.get("date") == today}
 
     def save(self):
         self._prune()
@@ -709,6 +713,31 @@ def handle_update(u, tg, state, cfg, out, now):
         out(read_sent_pdf(tg, cfg, doc, path), silent=True)
         return
     cmd = text.split()[0].lower() if text else ""
+    mf = re.match(r"(?i)^/?(?:please\s+)?follow\s+(?:court\s*(?:no\.?\s*)?)?(\d{1,3})\b(.*)$", text or "")
+    mu = re.match(r"(?i)^/?(?:stop\s+following|unfollow)\s*(?:court\s*(?:no\.?\s*)?)?(\d{1,3})?\s*$", text or "")
+    if mf or mu:
+        d = dstr(now.date())
+        fl = state.data.setdefault("follow", {})
+        if mu:
+            court = mu.group(1)
+            gone = [court] if court else list(fl)
+            for c_ in gone:
+                fl.pop(c_, None)
+            out("OK, stopped following %s." % (("Court " + court) if court else "all courts"), silent=True)
+            return
+        court = mf.group(1)
+        until = None
+        try:
+            _, rows = analyse_day(cfg, d)
+            mine = sorted(r["serial"] for r in rows if r["side"] == "A" and r["court_no"] == court and r["kind"] != "monthly-link")
+            until = mine[0] if mine else None
+        except Exception:
+            pass
+        fl[court] = {"until": until, "date": d}
+        out("👁 Following <b>Court %s</b>: a message each time an item finishes%s. Send <code>stop following %s</code> to end it. "
+            "(The board must be open with the CAPTCHA done.)" % (court, (", until your item %s comes on" % until) if until else " today", court),
+            silent=True)
+        return
     if captcha_reply(text):
         out("⌨️ Typing <code>%s</code> into the board…" % _e(text), silent=True)
         return
@@ -1207,6 +1236,7 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
 # ------------------------------------------------------------------ always-on listener
 BRIDGE_PORT = 8766
 RISE = {}  # today's notices, kept fresh by the listener loop for the board watcher
+FOLLOW = {}  # courts you asked to follow today: {court: {"until": item or None, "date": DDMMYYYY}}
 CAPTCHA = {"id": None, "answer": None, "ts": 0}  # board CAPTCHA waiting for your reply on Telegram
 TG = [None]
 CFG = {}
@@ -1238,6 +1268,23 @@ def start_bridge():
 
     class H(BaseHTTPRequestHandler):
         def do_POST(self):
+            if self.path.startswith("/follow-done"):
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    court = str(json.loads(self.rfile.read(n).decode() or "{}").get("court", ""))
+                    FOLLOW.pop(court, None)
+                    if TG[0]:
+                        st = State(TG[0]).load()
+                        (st.data.get("follow") or {}).pop(court, None)
+                        st.save()
+                    body, code = b'{"ok": true}', 200
+                except Exception as ex:
+                    body, code = json.dumps({"ok": False, "error": str(ex)[:200]}).encode(), 400
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if self.path.startswith("/captcha"):
                 try:
                     n = int(self.headers.get("Content-Length", 0))
@@ -1282,6 +1329,14 @@ def start_bridge():
                 body = json.dumps({"ntfy": c.get("NTFY_TOPIC", ""), "tg": c.get("TELEGRAM_BOT_TOKEN", ""),
                                    "chat": c.get("TELEGRAM_CHAT_ID", ""), "po_user": c.get("PUSHOVER_USER", ""),
                                    "po_token": c.get("PUSHOVER_TOKEN", "")}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if self.path.startswith("/follow"):
+                d = dstr(now_ist().date())
+                body = json.dumps({c: v for c, v in FOLLOW.items() if v.get("date") == d}).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
@@ -1380,6 +1435,8 @@ def listen(cfg, tg):
             state = State(tg).load()
             RISE.clear()
             RISE.update(state.data.get("rise") or {})
+            FOLLOW.clear()
+            FOLLOW.update(state.data.get("follow") or {})
             if time.time() - last_hb > 240:
                 state.data["listener"] = {"dev": dev, "hb": int(time.time())}
                 state.save()
@@ -1392,6 +1449,8 @@ def listen(cfg, tg):
                 handle_update(u, tg, state, cfg, out, now_ist())
                 RISE.clear()
                 RISE.update(state.data.get("rise") or {})
+                FOLLOW.clear()
+                FOLLOW.update(state.data.get("follow") or {})
                 state.data["listener"] = {"dev": dev, "hb": int(time.time())}
                 state.save()
                 last_hb = time.time()

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calcutta HC Board Watcher (Case Monitor)
 // @namespace    casemonitor
-// @version      3.3
+// @version      3.4
 // @description  Watches the official Calcutta HC display board (after YOU enter the CAPTCHA), knows each court's day plan, and pushes phone alerts when your item is near, on, or when its heading closes before your item.
 // @match        https://display.calcuttahighcourt.gov.in/principal.php*
 // @match        https://display.calcuttahighcourt.gov.in/jalpaiguri.php*
@@ -33,6 +33,7 @@
  *   minutes, and once more (with its length) when it ends.
  * - When the page asks for its CAPTCHA (e.g. after the board opens by itself at 10:15), the picture is sent to your
  *   Telegram; you reply with the characters and the watcher types them in. You always read the CAPTCHA yourself.
+ * - "follow 25" on Telegram: a message each time an item finishes in that court, until your item comes on.
  * - It keeps a small record of how each court moved (only the changes, 30 days)
  *   and sends a summary at 5 PM.
  * - When courts rise early (a bar resolution / notice sent to the bot), or the board stops
@@ -355,6 +356,39 @@
       } catch (e) {} } });
   }
 
+  // ------------------------------------------------------------ follow a court (asked for on Telegram: "follow 25")
+  let follows = {}, lastFollowPoll = 0;
+  function pollFollows() {
+    if (Date.now() - lastFollowPoll < 30e3) return;
+    lastFollowPoll = Date.now();
+    GM_xmlhttpRequest({ method: 'GET', url: 'http://127.0.0.1:8766/follow', timeout: 8000,
+      onload: r => { try { follows = JSON.parse(r.responseText) || {}; } catch (e) {} } });
+  }
+  function followCourts(board) {
+    Object.keys(follows).forEach(court => {
+      const f = follows[court];
+      if (LS.getItem(`hcw_followdone_${today()}_${court}_${f.until}`)) return;   // already reached today
+      const row = board.find(r => r.room === court && r.side === 'A') || board.find(r => r.room === court);
+      if (!row || isNaN(row.serial)) return;
+      const k = `hcw_follow_${today()}_${court}`;
+      const st = jget(k, { s: null, since: 0 });
+      if (st.s === row.serialText) return;
+      if (st.s !== null) {
+        const ran = Math.max(1, Math.round((Date.now() - st.since) / 60e3));
+        const left = f.until ? f.until - row.serial : null;
+        push(`Court ${court}: item ${st.s} done`, `It ran about ${ran} min. Now at ${row.serialText}.` +
+          (left !== null ? (left > 0 ? `\nYour item ${f.until} is ${left} away.` : `\nYour item ${f.until} is ON now.`) : ''), left !== null && left <= 0 ? 5 : 3);
+        if (left !== null && left <= 0) {   // your item has come: stop following
+          LS.setItem(`hcw_followdone_${today()}_${court}_${f.until}`, '1');
+          GM_xmlhttpRequest({ method: 'POST', url: 'http://127.0.0.1:8766/follow-done', headers: { 'Content-Type': 'application/json' },
+            data: JSON.stringify({ court }) });
+          delete follows[court];
+        }
+      }
+      jset(k, { s: row.serialText, since: Date.now() });
+    });
+  }
+
   // ------------------------------------------------------------ main check
   let lastFetched = '', lastFetchedChange = Date.now(), captchaSince = 0;
   const LATE_FREEZE = 15 * 60 + 15;       // a board frozen after this time = courts have risen
@@ -399,6 +433,8 @@
     }
     const board = readBoard();
     if (board.length && !stale) shareBoard(board, f);
+    pollFollows();
+    if (board.length && !stale) followCourts(board);
     autoLoad();
     loadSettings();
     const c = code();
@@ -454,7 +490,7 @@
   panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;width:360px;background:#fff;color:#111;' +
     'border:2px solid #4f378a;border-radius:10px;padding:10px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25)';
   panel.innerHTML = `
-    <b>Board Watcher 3.3</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
+    <b>Board Watcher 3.4</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
     <div id=hcw-body>
       <pre id=hcw-status style="white-space:pre-wrap;background:#f4f1fa;padding:6px;border-radius:6px;max-height:180px;overflow:auto"></pre>
       <label><b>Paste code here</b> (the board watcher code from Telegram, or the settings code)</label>
