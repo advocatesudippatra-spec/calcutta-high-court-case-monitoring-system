@@ -991,12 +991,7 @@ def notice_board(cfg, state, out, now, dry=False):
                 _e(n["title"]), _e(n["uploaded"]), _e(re.sub(r"\s+", " ", n["text"] or "")[:300]), _e(n["url"])))
             if not dry:
                 state.data["sent"]["nt:%s:%s" % (n["id"], d)] = "%s@%s" % (cfg["DEVICE_NAME"], now.strftime("%H:%M"))
-    dg = cfg.get("DIGEST_TIME", "18:00")
-    try:
-        dh, dm_ = [int(x) for x in dg.split(":")]
-    except ValueError:
-        dh, dm_ = 18, 0
-    if hm >= dh * 60 + dm_ and not state.done("dig:%s" % d):
+    if hm >= schedule(cfg)["DIGEST_TIME"] and not state.done("dig:%s" % d):
         since = time.time() - 24 * 3600
         rows = [r for r in con.execute("SELECT * FROM notices WHERE fetched>? ORDER BY id", (since,)).fetchall()
                 if not state.done("nt:%s:%s" % (r["id"], d))]
@@ -1020,7 +1015,8 @@ def check_notices(cfg, state, out, now, dry=False):
     """10:30 AM to 2 PM on court days with your matters: read new roster notices (sitting changes, modified
     determinations, assignment of cases), keep them all, and tell you only about those naming your courts/judges."""
     hm = now.hour * 60 + now.minute
-    if now.weekday() >= 5 or not (10 * 60 + 25 <= hm < 14 * 60):
+    sc = schedule(cfg)
+    if now.weekday() >= 5 or not (sc["NOTICE_FROM"] <= hm < sc["NOTICE_UNTIL"]):
         return
     last = float(state.data.get("ntc_last", 0))
     if time.time() - last < 9 * 60 and not dry:
@@ -1070,32 +1066,64 @@ def list_day_for(now):
     return tomorrow if tomorrow.weekday() < 5 else next_weekday(now.date())
 
 
-def due_jobs(now):
+SCHEDULE_DEFAULTS = {
+    "HEADSUP_TIMES": "20:30,21:30",     # evening heads-ups for tomorrow (only when a matter is likely); any number
+    "REPORT_TIME": "22:00",             # nightly report (+ Original Side / Jalpaiguri question)
+    "MORNING_TIMES": "08:30,09:30,10:00",  # morning reminders; the last one also links the board
+    "WATCH_CODE_TIME": "09:30",         # board watcher code message
+    "BOARD_OPEN_TIME": "10:15",         # main Mac opens the display board (CAPTCHA to your phone)
+    "NOTICE_FROM": "10:25",             # notices about your courts: checked from ...
+    "NOTICE_UNTIL": "14:00",            # ... until
+    "DIGEST_TIME": "18:00",             # daily digest of the notice board
+}
+
+
+def _hm_of(t):
+    h, m = [int(x) for x in t.strip().split(":")]
+    return h * 60 + m
+
+
+def schedule(cfg):
+    """The day's times (minutes after midnight) from config.env, falling back to the defaults."""
+    out = {}
+    for k, v in SCHEDULE_DEFAULTS.items():
+        raw = cfg.get(k, v) if cfg else v
+        try:
+            vals = sorted(_hm_of(x) for x in raw.split(",") if x.strip())
+        except ValueError:
+            vals = sorted(_hm_of(x) for x in v.split(","))
+        out[k] = vals if k in ("HEADSUP_TIMES", "MORNING_TIMES") else vals[0]
+    return out
+
+
+def due_jobs(now, cfg=None):
     """Jobs due at this moment: (key, kind, list_date). Missed slots collapse to the latest one."""
+    sc = schedule(cfg)
     hm = now.hour * 60 + now.minute
     today = dstr(now.date())
     nxt_d = list_day_for(now)
     nxt = dstr(nxt_d)
     is_tomorrow = nxt_d == now.date() + dt.timedelta(days=1)
     jobs = []
-    if is_tomorrow and 20 * 60 + 30 <= hm < 21 * 60 + 30:
-        jobs.append(("eve1:%s" % nxt, "evening", nxt))
-    elif is_tomorrow and 21 * 60 + 30 <= hm < 22 * 60:
-        jobs.append(("eve2:%s" % nxt, "evening", nxt))
-    elif hm >= 22 * 60:
+    rep, heads, morn = sc["REPORT_TIME"], sc["HEADSUP_TIMES"], sc["MORNING_TIMES"]
+    first_morning = morn[0] if morn else 8 * 60 + 30
+    if hm >= rep:
         jobs.append(("rep:%s" % nxt, "report", nxt))
         if is_tomorrow:
             jobs.append(("ask:%s" % nxt, "ask", nxt))
-    elif hm < 8 * 60 + 30:
+    elif is_tomorrow and heads and hm >= heads[0]:
+        i = max(k for k, t in enumerate(heads) if hm >= t)  # the latest heads-up slot that has begun
+        jobs.append(("eve%d:%s" % (i + 1, nxt), "evening", nxt))
+    elif hm < first_morning:
         if now.weekday() < 5:
             jobs.append(("rep:%s" % today, "report", today))  # catch-up for last night
     elif hm < 13 * 60:
         if now.weekday() < 5:
             jobs.append(("rep:%s" % today, "report", today))  # if nobody sent it, send it first
-            slot = "m0830" if hm < 9 * 60 + 30 else "m0930" if hm < 10 * 60 else "m1000"
-            jobs.append(("%s:%s" % (slot, today), "morning", today))
-            if hm >= 9 * 60 + 30:
-                jobs.append(("watch:%s" % today, "watch", today))  # copy-paste code for the board watcher
+            t = max(x for x in morn if hm >= x)
+            jobs.append(("m%02d%02d:%s" % (t // 60, t % 60, today), "morning", today))
+            if hm >= sc["WATCH_CODE_TIME"]:
+                jobs.append(("watch:%s" % today, "watch", today))  # code for the board watcher
     # weekend: Monday's list usually comes out on Saturday (sometimes Sunday) - send it as soon as it is out
     if (now.weekday() == 5 and hm >= 12 * 60) or now.weekday() == 6:
         if not any(j[1] == "report" and j[2] == nxt for j in jobs):
@@ -1151,7 +1179,7 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
         out(monthly_report_text(mrows, "A", md) if md else "No monthly list found yet. I check for one every day.")
         state.save()
 
-    for key, kind, d in due_jobs(now):
+    for key, kind, d in due_jobs(now, cfg):
         if state.done(key):
             continue
         if kind == "mprobe":
@@ -1187,7 +1215,7 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
             state.mark(key, dev) if not dry else None
             log("%s: no court work on %s (notice); skipped." % (key, pretty(d)))
             continue
-        pub, rows = analyse_day(cfg, d, refresh=(kind == "morning" and key.startswith("m0830")), day_end=rise)
+        pub, rows = analyse_day(cfg, d, refresh=(kind == "morning" and key.split(":")[0] == "m%02d%02d" % divmod((schedule(cfg)["MORNING_TIMES"] or [510])[0], 60)), day_end=rise)
         extra = [s for s in state.data["xs"].get(d, "") if s in cl.SIDES]
         if kind == "morning" and extra:
             rows += analyse_day(cfg, d, sides=extra, day_end=rise)[1]
@@ -1249,10 +1277,14 @@ def tick(cfg, now=None, dry=False, tg=None, verbose=True, state=None):
                     % (pretty(d), _e(watch_code(rows, d))), silent=True)
         elif kind == "morning":
             slot = key.split(":")[0]
-            label = {"m0830": "Morning reminder (8:30)", "m0930": "Reminder (9:30)", "m1000": "Court starts soon (10:00)"}[slot]
-            msg = reminder_text(rows, d, label, board=(slot == "m1000"))
+            morn = schedule(cfg)["MORNING_TIMES"]
+            last_slot = "m%02d%02d" % divmod(morn[-1], 60) if morn else ""
+            hh, mm = int(slot[1:3]), int(slot[3:5])
+            when = "%d:%02d" % ((hh - 1) % 12 + 1, mm)
+            label = ("Court starts soon (%s)" % when) if slot == last_slot else ("Morning reminder (%s)" % when if slot == "m%02d%02d" % divmod(morn[0], 60) else "Reminder (%s)" % when)
+            msg = reminder_text(rows, d, label, board=(slot == last_slot))
             if msg:
-                out(msg, alarm=any(r["realistic"] for r in rows) and slot == "m1000")
+                out(msg, alarm=any(r["realistic"] for r in rows) and slot == last_slot)
         state.mark(key, dev)
 
     try:
@@ -1585,7 +1617,8 @@ def auto_open_board(cfg, now):
     if cfg.get("AUTO_OPEN_BOARD") != "1" or cfg.get("LISTENER") != "1" or now.weekday() >= 5:
         return
     hm = now.hour * 60 + now.minute
-    if not (10 * 60 + 15 <= hm < 11 * 60 + 30):
+    opens = schedule(cfg)["BOARD_OPEN_TIME"]
+    if not (opens <= hm < opens + 75):
         return
     stamp = os.path.join(HOME, ".board_opened_%s" % dstr(now.date()))
     if os.path.exists(stamp):
@@ -1744,6 +1777,9 @@ def main():
     b.add_argument("--from", dest="start", required=True, help="DDMMYYYY")
     b.add_argument("--to", dest="end", help="DDMMYYYY (default: today)")
     b.add_argument("--sides", default="A", help="e.g. A or A,O,J")
+    sp = sub.add_parser("schedule", help="show or change the day's times")
+    sp.add_argument("key", nargs="?", help="e.g. MORNING_TIMES")
+    sp.add_argument("value", nargs="?", help="e.g. 08:30,09:15,10:00")
     dd = sub.add_parser("data", help="database: show sizes, or trim by date and type")
     dd.add_argument("action", choices=["stats", "trim", "folder"])
     dd.add_argument("--from", dest="dfrom", help="DDMMYYYY (start of the range to delete)")
@@ -1815,6 +1851,21 @@ def main():
         print("Recent jobs:", json.dumps(st.data.get("sent", {}), indent=1))
     elif a.cmd == "backfill":
         backfill(cfg, ddate(a.start), ddate(a.end) if a.end else now_ist().date(), _sides(a.sides) or ["A"])
+    elif a.cmd == "schedule":
+        if a.key and a.value:
+            k = a.key.upper()
+            if k not in SCHEDULE_DEFAULTS:
+                print("Unknown setting. One of:", ", ".join(SCHEDULE_DEFAULTS))
+                sys.exit(1)
+            try:
+                [_hm_of(x) for x in a.value.split(",")]
+            except ValueError:
+                print("Times look like 08:30 or 20:30,21:30")
+                sys.exit(1)
+            set_config(k, a.value)
+            cfg = load_config()
+        for k, v in SCHEDULE_DEFAULTS.items():
+            print("  %-16s %s" % (k, cfg.get(k, v) + ("" if k in cfg else "   (default)")))
     elif a.cmd == "data":
         if a.action == "folder":
             print(roster.DATA_DIR)
