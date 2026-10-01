@@ -591,12 +591,12 @@ def save_html(rows, date_str, cfg, sides=None):
 :root{--bg:#fff;--fg:#1a1a1a;--mut:#555;--line:#ccc;--head:#f1f1f1}
 @media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--mut:#aaa;--line:#444;--head:#262626}}
 body{font:14px/1.45 system-ui,sans-serif;margin:16px;color:var(--fg);background:var(--bg)}
-.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%%;min-width:760px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%%;min-width:900px;table-layout:fixed}
 th,td{border:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}th{background:var(--head)}
-.s{color:var(--mut);font-size:12px}.det{font-size:12px;max-width:380px}.n{text-align:center;font-weight:700}a{color:inherit}
+.s{color:var(--mut);font-size:12px}.det{font-size:12px}.n{text-align:center;font-weight:700}a{color:inherit}
 </style><h2>Cause list %s: matters of %s</h2>
 <p class=s>Sides: %s. %d matter(s). "Likely" is a rule-of-thumb estimate, not a prediction by the Court. Check the determination column yourself.</p>
-<div class=wrap><table><tr><th>Court</th><th>Judge(s)</th><th>Determination, notes and day plan</th><th>Case</th><th>Item</th><th>Likely, and why</th></tr>%s</table></div>""" % (
+<div class=wrap><table><colgroup><col style='width:8%%'><col style='width:12%%'><col style='width:46%%'><col style='width:12%%'><col style='width:6%%'><col style='width:16%%'></colgroup><tr><th>Court</th><th>Judge(s)</th><th>Determination, notes and day plan</th><th>Case</th><th>Item</th><th>Likely, and why</th></tr>%s</table></div>""" % (
         pretty(date_str), pretty(date_str), _e(", ".join(cfg["names"])),
         _e(", ".join(cl.SIDES[s][2] for s in (sides or cfg["sides"]))), len(rows), trs)
     path = os.path.join(REPORTS, "report_%s%s.html" % (date_str, "" if not sides else "_" + "".join(sides)))
@@ -1434,6 +1434,26 @@ def start_bridge():
 
     class H(BaseHTTPRequestHandler):
         def do_POST(self):
+            if self.path.startswith("/ai"):
+                # the Mac app's Chat window: same assistant as Telegram (keyword answers when no AI key)
+                n = int(self.headers.get("Content-Length") or 0)
+                try:
+                    q = (json.loads(self.rfile.read(n) or b"{}").get("text") or "").strip()
+                    c_ = load_config()
+                    tg_ = telegram_from(c_)
+                    st_ = State(tg_).load() if tg_ else State(None)
+                    if ai.available(c_):
+                        res = {"answer": ai.ask(q, c_, ai_context(c_, st_, now_ist()), chat="app"), "ai": ai.provider_of(c_)}
+                    else:
+                        res = {"answer": re.sub(r"<[^>]+>", "", roster.answer(q, c_["names"])), "ai": ""}
+                except Exception as ex:
+                    res = {"error": str(ex)[:300]}
+                body = json.dumps(res).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if self.path.startswith("/follow-done"):
                 try:
                     n = int(self.headers.get("Content-Length", 0))
@@ -1826,7 +1846,28 @@ def setup(cfg):
         print("Board Watcher: install Tampermonkey in Chrome, then open  http://127.0.0.1:8766/watcher.user.js  and click Install.")
 
 
+def finish_setup():
+    """Last step of the Mac app's setup window: alarm topic, background jobs, test messages (no questions)."""
+    cfg = load_config()
+    tg = telegram_from(cfg)
+    st = State(tg).load()
+    sync_ntfy(cfg, st)
+    st.save()
+    services(load_config())
+    cfg = load_config()
+    lines = ["✅ Case Monitor is set up on <b>%s</b> for <b>%s</b>." % (_e(cfg["DEVICE_NAME"]), _e(", ".join(cfg["names"]))),
+             "Send /help to see what you can ask."]
+    if cfg.get("PHONE") == "android":
+        lines.append("Alarm app: install ntfy and subscribe to <code>%s</code>" % _e(cfg.get("NTFY_TOPIC", "")))
+    tg.send("\n".join(lines))
+    notify(cfg, "Case Monitor test\nIf this reaches your alarm app, alarms work.")
+    print(json.dumps({"ok": True, "ntfy": cfg.get("NTFY_TOPIC", "")}))
+
+
 def open_board():
+    if load_config().get("BOARD_BROWSER", "") == "app" and \
+            subprocess.run(["open", "casemonitor://board"], capture_output=True).returncode == 0:
+        return "the Case Monitor app"  # its built-in browser runs the watcher by itself
     for app in ("Google Chrome", "Google Chrome Beta", "Chromium", "Microsoft Edge"):
         if subprocess.run(["open", "-Ra", app], capture_output=True).returncode == 0:
             subprocess.run(["open", "-a", app, BOARD_URL])
@@ -1856,6 +1897,11 @@ def main():
     ak.add_argument("provider", choices=sorted(ai.PROVIDERS))
     apv = sub.add_parser("ai-provider", help="choose which AI answers (moonshot, deepseek, openai, gemini, claude)")
     apv.add_argument("provider", choices=sorted(ai.PROVIDERS))
+    am = sub.add_parser("ai-models", help="list the models an AI service offers your key (JSON)")
+    am.add_argument("provider", choices=sorted(ai.PROVIDERS))
+    amd = sub.add_parser("ai-model", help="choose the model for an AI service")
+    amd.add_argument("provider", choices=sorted(ai.PROVIDERS))
+    amd.add_argument("model")
     aa = sub.add_parser("ai", help="ask the AI assistant a question here")
     aa.add_argument("question", nargs="+")
     sp = sub.add_parser("schedule", help="show or change the day's times")
@@ -1872,7 +1918,7 @@ def main():
     f.add_argument("--before", help="DDMMYYYY: delete only lists before this date")
     q = sub.add_parser("ask")
     q.add_argument("question", nargs="+")
-    for c in ("stop", "resume", "status", "setup", "setup-telegram", "services", "board", "watcher-settings", "ntfy-topic", "listen"):
+    for c in ("stop", "resume", "status", "setup", "finish-setup", "setup-telegram", "services", "board", "watcher-settings", "ntfy-topic", "listen"):
         sub.add_parser(c)
     a = ap.parse_args()
     cfg = load_config()
@@ -1941,6 +1987,17 @@ def main():
             ai.set_key(a.provider, key)
             print("Saved in the Keychain for %s.%s" % (a.provider, "" if ai.provider_of(cfg) == a.provider else
                                                       "  (Currently answering: %s. Switch with: calllist ai-provider %s)" % (ai.provider_of(cfg), a.provider)))
+    elif a.cmd == "ai-models":
+        try:
+            ids = ai.list_models(a.provider, cfg)
+            print(json.dumps({"models": ids, "chat": [i for i in ids if not ai._NOT_CHAT.search(i)],
+                              "current": ai.model_of(a.provider, cfg), "suggested": ai.pick_model(a.provider, ids)}))
+        except Exception as ex:
+            print(json.dumps({"error": str(ex)[:300], "current": ai.model_of(a.provider, cfg)}))
+            sys.exit(1)
+    elif a.cmd == "ai-model":
+        ai.save_model(a.provider, a.model.strip())
+        print("Model for %s: %s" % (a.provider, a.model.strip()))
     elif a.cmd == "ai-provider":
         set_config("AI_PROVIDER", a.provider)
         print("AI provider: %s%s" % (a.provider, "" if ai.get_key(a.provider) else "   (no key yet: calllist ai-key %s)" % a.provider))
@@ -2014,6 +2071,8 @@ def main():
         print(cfg.get("NTFY_TOPIC", "(not set yet: it is created on the next background check)"))
     elif a.cmd == "setup":
         setup(cfg)
+    elif a.cmd == "finish-setup":
+        finish_setup()
     elif a.cmd == "services":
         print("Listener on this Mac:", "on" if services(cfg) else "off")
     elif a.cmd == "setup-telegram":

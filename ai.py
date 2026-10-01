@@ -8,6 +8,7 @@ API keys are kept in the macOS Keychain (set with:  casemonitor ai-key moonshot)
 """
 import datetime as dt
 import json
+import os
 import re
 import sqlite3
 import subprocess
@@ -21,12 +22,13 @@ import roster
 KEYCHAIN_SERVICE = "Calcutta High Court Case Monitor"
 PROVIDERS = {
     # name: (kind, default base URL, default model)
-    "moonshot": ("openai", "https://api.moonshot.ai/v1", "kimi-latest"),
+    "moonshot": ("openai", "https://api.moonshot.ai/v1", "kimi-k3"),
     "deepseek": ("openai", "https://api.deepseek.com", "deepseek-chat"),
     "openai": ("openai", "https://api.openai.com/v1", "gpt-4.1-mini"),
-    "gemini": ("openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"),
-    "claude": ("anthropic", "https://api.anthropic.com/v1", "claude-sonnet-5"),
+    "gemini": ("openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash"),
+    "claude": ("anthropic", "https://api.anthropic.com/v1", "claude-sonnet-5-5"),
 }
+NAMES = {"moonshot": "Moonshot (Kimi)", "deepseek": "DeepSeek", "openai": "OpenAI", "gemini": "Google Gemini", "claude": "Claude"}
 MAX_TOOL_ROUNDS = 6
 HISTORY = {}  # chat id -> recent [(role, text)] so follow-up questions make sense
 
@@ -35,11 +37,16 @@ HISTORY = {}  # chat id -> recent [(role, text)] so follow-up questions make sen
 def get_key(provider):
     r = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", provider, "-w"],
                        capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else ""
+    return _clean(r.stdout) if r.returncode == 0 else ""
+
+
+def _clean(key):
+    """Drop what a Terminal paste can add around a key (bracketed-paste markers, spaces, line breaks)."""
+    return re.sub(r"\x1b\[20[01]~|\[20[01]~|[\s\x00-\x1f\x7f]", "", key or "")
 
 
 def set_key(provider, key):
-    subprocess.run(["security", "add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", provider, "-w", key],
+    subprocess.run(["security", "add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", provider, "-w", _clean(key)],
                    capture_output=True, text=True, check=True)
 
 
@@ -53,7 +60,75 @@ def provider_of(cfg):
 
 
 def available(cfg):
-    return bool(get_key(provider_of(cfg)))
+    """True if the chosen service, or any other service, has a key (the others are the fall-back)."""
+    return bool(get_key(provider_of(cfg))) or any(get_key(p) for p in PROVIDERS)
+
+
+def model_of(prov, cfg):
+    return (cfg or {}).get("AI_MODEL_%s" % prov.upper()) or PROVIDERS[prov][2]
+
+
+# ------------------------------------------------------------------ models: list, choose, recover when one is retired
+_NOT_CHAT = re.compile(r"embed|tts|audio|image|imagen|vision|whisper|dall|moderation|realtime|transcri|search|veo|lyria|"
+                       r"aqa|learnlm|gemma|code|computer|robotics|native|live|guard|ocr", re.I)
+_PREFER = {
+    "gemini": [r"^gemini-[\d.]+-flash$", r"^gemini-[\d.]+-pro$", r"^gemini-.*flash", r"^gemini-"],
+    "openai": [r"^gpt-[\d.]+-mini$", r"^gpt-[\d.]+$", r"^gpt-", r"^o\d"],
+    "claude": [r"^claude-sonnet-", r"^claude-opus-", r"^claude-"],
+    "deepseek": [r"^deepseek-chat$", r"^deepseek-"],
+    "moonshot": [r"^kimi-k[\d.]+$", r"^kimi-", r"^moonshot-"],
+}
+
+
+def _version(mid):
+    return [int(x) for x in re.findall(r"\d+", mid)[:3]]
+
+
+def list_models(prov, cfg=None):
+    """The model names this key may use, as the service reports them."""
+    kind, base, _ = PROVIDERS[prov]
+    base = (cfg or {}).get("AI_BASE_%s" % prov.upper(), base)
+    key = get_key(prov)
+    if not key:
+        raise RuntimeError("No API key for %s" % prov)
+    headers = ({"x-api-key": key, "anthropic-version": "2023-06-01"} if kind == "anthropic"
+               else {"Authorization": "Bearer " + key})
+    req = urllib.request.Request(base.rstrip("/") + "/models", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30, context=cl._ssl_ctx()) as r:
+            data = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError("AI provider error %s: %s" % (e.code, e.read().decode()[:300]))
+    items = data.get("data") or data.get("models") or []
+    ids = {re.sub(r"^models/", "", m.get("id") or m.get("name") or "") for m in items if isinstance(m, dict)}
+    return sorted((i for i in ids if i), key=lambda i: (_version(i), i), reverse=True)
+
+
+def pick_model(prov, ids):
+    """A sensible everyday chat model from the list: newest stable 'flash' / 'mini' / 'sonnet' / 'kimi' first."""
+    usable = [i for i in ids if not _NOT_CHAT.search(i)] or list(ids)
+    for pat in _PREFER.get(prov, []):
+        hits = [i for i in usable if re.search(pat, i)]
+        stable = [i for i in hits if not re.search(r"preview|exp|lite|latest|nano|\d{4}-?\d{2}-?\d{2}", i)]
+        if stable or hits:
+            return max(stable or hits, key=lambda i: (_version(i), -len(i)))
+    return usable[0] if usable else None
+
+
+def save_model(prov, model):
+    """Remember the model in config.env (AI_MODEL_<PROVIDER>)."""
+    path = os.path.join(roster.HOME, "config.env")
+    lines = open(path).read().splitlines() if os.path.exists(path) else []
+    k = "AI_MODEL_%s=" % prov.upper()
+    lines = [ln for ln in lines if not ln.startswith(k)] + [k + model]
+    open(path, "w").write("\n".join(lines) + "\n")
+
+
+def _model_gone(msg):
+    m = msg.lower()
+    return ("error 404" in m or "model" in m) and bool(re.search(
+        r"not.?found|no longer|deprecat|does not exist|not exist|unsupported model|invalid model|decommission|retired|not available",
+        m))
 
 
 # ------------------------------------------------------------------ tools the AI may use
@@ -150,7 +225,13 @@ def _post(url, body, headers, timeout=90):
 def _openai_chat(base, key, model, messages, tools):
     body = {"model": model, "messages": messages, "temperature": 0.2,
             "tools": [{"type": "function", "function": t} for t in tools]}
-    res = _post(base.rstrip("/") + "/chat/completions", body, {"Authorization": "Bearer " + key})
+    try:
+        res = _post(base.rstrip("/") + "/chat/completions", body, {"Authorization": "Bearer " + key})
+    except RuntimeError as ex:
+        if "temperature" not in str(ex):
+            raise
+        body.pop("temperature")  # some models (e.g. kimi-k3) only take their own fixed temperature
+        res = _post(base.rstrip("/") + "/chat/completions", body, {"Authorization": "Bearer " + key})
     msg = res["choices"][0]["message"]
     calls = [(c["id"], c["function"]["name"], json.loads(c["function"].get("arguments") or "{}")) for c in (msg.get("tool_calls") or [])]
     return msg, calls
@@ -175,18 +256,14 @@ def system_prompt(cfg, now):
             "user; never offer to solve it." % (", ".join(cfg["names"]) or "the user", now.strftime("%A %d %B %Y, %I:%M %p")))
 
 
-def ask(text, cfg, ctx, chat="me", now=None, call=None):
-    """Answer one message. ctx: names, my_matters(date), follow(court), unfollow(court), remind(time,date,text).
-    call: optional stand-in for the provider (tests)."""
-    now = now or dt.datetime.now(roster.IST)
-    prov = provider_of(cfg)
-    kind, base, model = PROVIDERS[prov]
+def _ask_one(prov, text, cfg, ctx, hist, now, call=None):
+    """One service, one answer (raises on failure)."""
+    kind, base, _ = PROVIDERS[prov]
     base = cfg.get("AI_BASE_%s" % prov.upper(), base)
-    model = cfg.get("AI_MODEL_%s" % prov.upper(), model)
+    model = model_of(prov, cfg)
     key = get_key(prov) if call is None else "test"
     if not key:
-        raise RuntimeError("No API key for %s (set it with: casemonitor ai-key %s)" % (prov, prov))
-    hist = HISTORY.setdefault(chat, [])
+        raise RuntimeError("No API key for %s" % prov)
     sysmsg = system_prompt(cfg, now)
     answer = ""
     if kind == "openai" or call is not None:
@@ -214,12 +291,53 @@ def ask(text, cfg, ctx, chat="me", now=None, call=None):
                                                            "content": run_tool(name, args, ctx)} for cid, name, args in calls]})
         else:
             answer = "I could not finish looking that up; please ask more specifically."
+    return answer
+
+
+def ask(text, cfg, ctx, chat="me", now=None, call=None):
+    """Answer one message. ctx: names, my_matters(date), follow(court), unfollow(court), remind(time,date,text).
+    If the chosen service fails, a retired model is replaced from the service's own list, then the other services
+    with saved keys are tried in turn (AI_NO_FALLBACK=1 tries only the chosen one). call: stand-in provider (tests)."""
+    now = now or dt.datetime.now(roster.IST)
+    first = provider_of(cfg)
+    single = call is not None or os.environ.get("AI_NO_FALLBACK") == "1"
+    order = [first] if single else [first] + [p for p in PROVIDERS if p != first]
+    hist = HISTORY.setdefault(chat, [])
+    answer, used, notes, errors = None, None, [], []
+    for prov in order:
+        if call is None and not get_key(prov):
+            continue
+        try:
+            answer, used = _ask_one(prov, text, cfg, ctx, hist, now, call), prov
+            break
+        except Exception as ex:
+            msg = str(ex)
+            if call is None and _model_gone(msg):
+                try:
+                    new = pick_model(prov, list_models(prov, cfg))
+                    if new and new != model_of(prov, cfg):
+                        save_model(prov, new)
+                        cfg = dict(cfg, **{"AI_MODEL_%s" % prov.upper(): new})
+                        answer, used = _ask_one(prov, text, cfg, ctx, hist, now, call), prov
+                        notes.append("%s's old model is retired; now using %s." % (NAMES[prov], new))
+                        break
+                except Exception as ex2:
+                    msg = "%s; then: %s" % (msg, ex2)
+            errors.append("%s: %s" % (NAMES[prov], msg[:220]))
+    if answer is None:
+        if not errors:
+            raise RuntimeError("No API key for %s (set it with: casemonitor ai-key %s)" % (first, first))
+        raise RuntimeError("No AI service answered. " + " | ".join(errors))
+    if used != first:
+        notes.append("Answered by %s because %s did not work." % (NAMES[used], NAMES[first]))
     answer = (answer or "").strip() or "I have no answer for that."
     hist.extend([("user", text), ("assistant", answer)])
+    if notes:
+        answer += "\n\n(" + " ".join(notes) + ")"
     del hist[:-12]
     try:
         con = roster.db()
-        con.execute("INSERT INTO ai_log VALUES(?,?,?,?,?)", (time.time(), chat, prov, text, answer))
+        con.execute("INSERT INTO ai_log VALUES(?,?,?,?,?)", (time.time(), chat, used, text, answer))
         con.commit()
     except Exception:
         pass

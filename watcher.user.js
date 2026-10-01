@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calcutta HC Board Watcher (Case Monitor)
 // @namespace    casemonitor
-// @version      3.4
+// @version      3.5
 // @description  Watches the official Calcutta HC display board (after YOU enter the CAPTCHA), knows each court's day plan, and pushes phone alerts when your item is near, on, or when its heading closes before your item.
 // @match        https://display.calcuttahighcourt.gov.in/principal.php*
 // @match        https://display.calcuttahighcourt.gov.in/jalpaiguri.php*
@@ -391,7 +391,9 @@
 
   // ------------------------------------------------------------ main check
   let lastFetched = '', lastFetchedChange = Date.now(), captchaSince = 0;
-  const LATE_FREEZE = 15 * 60 + 15;       // a board frozen after this time = courts have risen
+  const LATE_FREEZE = 15 * 60 + 30;       // after 3:30 PM a frozen board = courts have risen (e.g. a Bar resolution): stop quietly
+  const RECESS_FROM = 13 * 60, RECESS_TO = 14 * 60 + 15;  // lunch recess (1-2 PM, with grace): a still board is normal
+  function inRecess(now) { return now >= RECESS_FROM && now < RECESS_TO; }
   function courtHours(now) { return now >= 10 * 60 + 25 && now <= 16 * 60 + 45 && !(riseAt !== null && riseAt > 0 && now >= riseAt); }
   function risenFlag() { return `hcw_risen_${today()}`; }
   function check() {
@@ -421,15 +423,15 @@
     // late in the day a frozen board means the courts have risen (e.g. a condolence resolution): stop, don't alarm
     if (LS.getItem(risenFlag()) || (stale && now >= LATE_FREEZE && (Date.now() - lastFetchedChange) > 10 * 60e3)) {
       if (!LS.getItem(risenFlag())) {
-        LS.setItem(risenFlag(), f || '1');
-        push('Board stopped for the day', `The display board has not changed since ${f || 'a while'}, so the courts appear to have risen. ` +
-          'Watching stopped for today (reload the page if a court is still sitting).', 3);
+        LS.setItem(risenFlag(), f || '1');  // no message: after 3:30 PM courts often rise early, which is normal
+        log('Board still since ' + (f || 'a while') + ' after 3:30 PM: courts appear to have risen; watching stopped quietly.');
       }
       status(`Board stopped at ${LS.getItem(risenFlag())}: courts appear to have risen. Watching stopped for today.`);
       return;
     }
-    if (stale && courtHours(now) && now < LATE_FREEZE) {
-      once('stale_' + f, () => push('Board not updating', `The board's data has been stuck at ${f} for over ${STALE_MIN} minutes. Reload the page (Cmd+R) and type the CAPTCHA again.`, 4));
+    // no alarm during the lunch recess; if it is still stuck after the recess, one alert
+    if (stale && courtHours(now) && now < LATE_FREEZE && !inRecess(now)) {
+      once('stale_' + f, () => push('Board not updating', `The board's data has been stuck at ${f} for over ${STALE_MIN} minutes. Reload the board (Cmd+R); if it asks for the CAPTCHA, type it.`, 4));
     }
     const board = readBoard();
     if (board.length && !stale) shareBoard(board, f);
@@ -457,7 +459,7 @@
       }
       lines.push(checkItem(w, row, c, now) + (stale ? '' : longRun(row, c, now)));
     });
-    status((stale ? `⚠ Board data stuck at ${f}: reload + CAPTCHA\n` : '') + (autoNote ? autoNote + '\n' : '') + lines.join('\n') +
+    status((stale ? (inRecess(now) ? `Lunch recess: board still at ${f} (normal)\n` : `⚠ Board data stuck at ${f}: reload the board\n`) : '') + (autoNote ? autoNote + '\n' : '') + lines.join('\n') +
       (bridgeOk === false ? '\n(Telegram questions about the board: the Case Monitor listener is not running on this Mac)' : ''));
     if (now >= SUMMARY_AT) once('summary', () => summary(c));
   }
@@ -490,7 +492,7 @@
   panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;width:360px;background:#fff;color:#111;' +
     'border:2px solid #4f378a;border-radius:10px;padding:10px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25)';
   panel.innerHTML = `
-    <b>Board Watcher 3.4</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
+    <b>Board Watcher 3.5</b> <span id=hcw-min style="float:right;cursor:pointer">_</span>
     <div id=hcw-body>
       <pre id=hcw-status style="white-space:pre-wrap;background:#f4f1fa;padding:6px;border-radius:6px;max-height:180px;overflow:auto"></pre>
       <label><b>Paste code here</b> (the board watcher code from Telegram, or the settings code)</label>
